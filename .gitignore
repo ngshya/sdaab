@@ -69,7 +69,12 @@ instance/
 .scrapy
 
 # Sphinx documentation
-docs/_build/
+docs/build/
+!docs/source/
+docs/source/*
+!docs/source/conf.py
+!docs/source/index.rst
+!docs/source/_static/
 
 # PyBuilder
 target/
@@ -127,3 +132,28 @@ dmypy.json
 
 # Pyre type checker
 .pyre/
+
+# vscode
+.vscode
+
+# data folder
+/data
+
+# default save folder
+/SAVE
+
+# default output folder
+/OUT
+
+# default input folder
+/IN
+
+# log
+*.log
+
+# profiler
+profiler.pstats
+profiler.png
+
+# Env variables
+/bin/run_secret_variables
