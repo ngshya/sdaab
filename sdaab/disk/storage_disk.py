@@ -56,7 +56,11 @@ class StorageDisk(Storage):
         except Exception as e:
             self.__initialized = False
             logger.error("Initialization failed. " + str(e))
-    
+
+
+    def initialized(self):
+        return self.__initialized
+
 
     def __path_expand(self, path):
         path = str(path)
