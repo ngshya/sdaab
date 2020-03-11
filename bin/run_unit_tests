@@ -1,0 +1,4 @@
+#!/bin/bash
+
+export ENV_RUN=TESTING
+pytest -n 8 --no-cov-on-fail --cov-fail-under=98 --cov-config=.coveragerc --cov=sdaab tests/

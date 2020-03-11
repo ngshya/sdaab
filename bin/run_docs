@@ -1,0 +1,7 @@
+#!/bin/bash
+export ENV_RUN=DEVELOPMENT
+rm -r docs/build/*
+find docs/source/* -type f -not -name '*conf.py' -not -name '*index.rst' -not -name '*empty.txt' | sed 's/ /\\ /g' | xargs -r rm -r 
+find docs/source/* -type d -not -name '*_static' | sed 's/ /\\ /g' | xargs -r rm -r 
+sphinx-apidoc -f -o docs/source/ .
+sphinx-build -b html docs/source docs/build

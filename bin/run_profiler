@@ -1,0 +1,7 @@
+#!/bin/bash
+
+python -m cProfile -s tottime $1
+# python -m cProfile -s tottime -o profiler.pstats $1
+
+# Comment out the line below if dot not installed. 
+# gprof2dot -f pstats profiler.pstats | dot -Tpng -o profiler.png
