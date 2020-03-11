@@ -302,6 +302,6 @@ class StorageDisk(Storage):
             assert isfile(path_full), "File not found."
             with open(path_full, "a") as f:
                 f.write(content)
-            logger.debug("append " + str(path) ": " + str(content))
+            logger.debug("append " + str(path) + ": " + str(content))
         except Exception as e:
             logger.error("Failed to append. " + str(e)) 
