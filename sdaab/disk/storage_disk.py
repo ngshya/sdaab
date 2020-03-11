@@ -1,9 +1,9 @@
 from abc import ABC, abstractmethod
 import pickle
 from pathlib import Path
-from os import makedirs, chmod, remove, rmdir, walk, rename
+from os import makedirs, chmod, remove, walk, rename
 from os.path import isdir, isfile, getsize, join, islink
-from shutil import copyfile, move, copytree
+from shutil import copyfile, move, copytree, rmtree
 from re import sub
 from .logger import logger
 from ..storage.storage import Storage
@@ -182,7 +182,7 @@ class StorageDisk(Storage):
             if isfile(path_full):
                 remove(path_full)
             else:
-                rmdir(path_full)
+                rmtree(path_full, ignore_errors=True)
             assert ((not isdir(path_full)) and (not isfile(path_full))), \
                 "File/folder still exists."
             logger.debug("rm " + str(path) + ": True")
