@@ -45,6 +45,7 @@ class StorageDisk(Storage):
     def __init__(self, root_path="/"):
         try:
             self.__storage_type = "DISK"
+            assert root_path[0] == "/", "Root path should start with /."
             root_path = Path(root_path).resolve()
             assert isdir(root_path), "Root folder not found."
             self.__root_path_full = root_path
