@@ -11,9 +11,10 @@ from ..storage.storage import Storage
 
 def safe_folder_path_str(path):
     path = str(path)
-    path = sub('[^a-zA-Z0-9-_/]+', '', path)
-    path = path + "/"
-    path = sub('[/]+', '/', path)
+    path = sub('[^a-zA-Z0-9-_./]+', '', path)
+    if len(path) > 0:
+        path = path + "/"
+        path = sub('[/]+', '/', path)
     return path
 
 
@@ -23,6 +24,7 @@ def safe_file_path_str(path):
     file_name = path.name
     path_folder = safe_folder_path_str(path_folder)
     file_name = sub('[^a-zA-Z0-9-_.]+', '', file_name)
+    path = path_folder + file_name
     return path
 
 
@@ -45,6 +47,7 @@ class StorageDisk(Storage):
     def __init__(self, root_path="/"):
         try:
             self.__storage_type = "DISK"
+            root_path = str(root_path)
             assert root_path[0] == "/", "Root path should start with /."
             root_path = Path(root_path).resolve()
             assert isdir(root_path), "Root folder not found."
@@ -71,6 +74,12 @@ class StorageDisk(Storage):
         else:
             path_full = (self.__cd_full / path).resolve()
         return path_full
+    
+
+    def __check_path_full(self, path_full):
+        assert str(Path(path_full).resolve())\
+            .startswith(str(self.__root_path_full)), \
+            "Impossible to go beyond the root path."
 
 
     def get_type(self):
@@ -85,10 +94,15 @@ class StorageDisk(Storage):
     def cd(self, path):
         try:
             assert self.__initialized, "Storage not initialized."
+            path = str(path)
             path_full = self.__path_expand(path)
+            self.__check_path_full(path_full)
             assert isdir(path_full), "Current directory not found."
             self.__cd_full = path_full
-            self.__cd = Path(str(self.__cd) + "/" + path).resolve()
+            if path[0] == "/":
+                self.__cd = Path(path).resolve()
+            else:
+                self.__cd = Path(str(self.__cd) + "/" + path).resolve()
             logger.debug("cd " + str(path) + ": True")
         except Exception as e:
             logger.error("cd failed. " + str(e))
@@ -97,6 +111,7 @@ class StorageDisk(Storage):
     def pwd(self):
         try:
             assert self.__initialized, "Storage not initialized."
+            #logger.debug("pwd full path: " + str(self.__cd_full))
             logger.debug("pwd: " + str(self.__cd))
             return str(self.__cd)
         except Exception as e:
@@ -106,7 +121,9 @@ class StorageDisk(Storage):
     def ls(self, path=""):
         try:
             assert self.__initialized, "Storage not initialized."
+            path = str(path)
             path_full = self.__path_expand(path)
+            self.__check_path_full(path_full)
             assert isdir(path_full), "Folder not found."
             output = [x.name for x in path_full.iterdir()]
             logger.debug("ls " + str(path) + ": " + " ".join(output))
@@ -118,7 +135,9 @@ class StorageDisk(Storage):
     def exists(self, path):
         try:
             assert self.__initialized, "Storage not initialized."
+            path = str(path)
             path_full = self.__path_expand(path)
+            self.__check_path_full(path_full)
             output = isdir(path_full) or isfile(path_full)
             logger.debug("exists " + str(path) + ": " + str(output))
             return output
@@ -129,8 +148,10 @@ class StorageDisk(Storage):
     def mkdir(self, path):
         try:
             assert self.__initialized, "Storage not initialized."
+            path = str(path)
             path = safe_folder_path_str(path)
             path_full = self.__path_expand(path)
+            self.__check_path_full(path_full)
             assert not isdir(path_full), "Directory already exists."
             makedirs(path_full)
             assert isdir(path_full), "Directory check failed."
@@ -143,8 +164,11 @@ class StorageDisk(Storage):
     def upload(self, path_source, path_dest):
         try:
             assert self.__initialized, "Storage not initialized."
+            path_source = str(path_source)
+            path_dest = str(path_dest)
             path_dest = safe_file_path_str(path_dest)
             path_full = self.__path_expand(path_dest)
+            self.__check_path_full(path_full)
             assert isfile(path_source), "Source file not found."
             assert not isfile(path_full), "Destination file already exists."
             assert not isdir(path_full), "Destination folder already exists."
@@ -159,9 +183,12 @@ class StorageDisk(Storage):
     def download(self, path_source, path_dest):
         try:
             assert self.__initialized, "Storage not initialized."
+            path_source = str(path_source)
+            path_dest = str(path_dest)
             path_source = safe_file_path_str(path_source)
             path_full = self.__path_expand(path_source)
-            assert isfile(path_source), "Source file not found."
+            self.__check_path_full(path_full)
+            assert isfile(path_full), "Source file not found."
             assert not isfile(path_dest), "Destination file already exists."
             assert not isdir(path_dest), "Destination folder already exists."
             copyfile(path_full, path_dest)
@@ -175,8 +202,10 @@ class StorageDisk(Storage):
     def rm(self, path):
         try:
             assert self.__initialized, "Storage not initialized."
+            path = str(path)
             path = safe_folder_path_str(path)
             path_full = self.__path_expand(path)
+            self.__check_path_full(path_full)
             assert (isdir(path_full) or isfile(path_full)), \
                 "File/folder not found."
             if isfile(path_full):
@@ -193,8 +222,10 @@ class StorageDisk(Storage):
     def size(self, path):
         try:
             assert self.__initialized, "Storage not initialized."
-            path = safe_folder_path_str(path)
+            path = str(path)
+            path = safe_file_path_str(path)
             path_full = self.__path_expand(path)
+            self.__check_path_full(path_full)
             assert (isdir(path_full) or isfile(path_full)), \
                 "File/folder not found."
             if isfile(path_full):
@@ -202,6 +233,7 @@ class StorageDisk(Storage):
             else:
                 output = get_folder_size(path_full)
             logger.debug("size " + str(path) + ": " + str(output))
+            return output
         except Exception as e:
             logger.error("Failed to get the size. " + str(e))
 
@@ -209,8 +241,10 @@ class StorageDisk(Storage):
     def upload_from_memory(self, variable, path):
         try:
             assert self.__initialized, "Storage not initialized."
+            path = str(path)
             path = safe_file_path_str(path)
             path_full = self.__path_expand(path)
+            self.__check_path_full(path_full)
             assert not isfile(path_full), "File already exists."
             assert not isdir(path_full), "Folder already exists."
             pickle.dump(obj=variable, file=open(path_full, "wb"))
@@ -224,8 +258,10 @@ class StorageDisk(Storage):
     def download_to_memory(self, path):
         try:
             assert self.__initialized, "Storage not initialized."
+            path = str(path)
             path = safe_file_path_str(path)
             path_full = self.__path_expand(path)
+            self.__check_path_full(path_full)
             assert isfile(path_full), "File not found."
             logger.debug("download_to_memory " + str(path) + ": True")
             return pickle.load(file=open(path_full, "rb"))
@@ -236,9 +272,15 @@ class StorageDisk(Storage):
     def rename(self, path_source, path_dest):
         try:
             assert self.__initialized, "Storage not initialized."
+            path_source = str(path_source)
+            path_dest = str(path_dest)
             path_source_full = self.__path_expand(path_source)
+            self.__check_path_full(path_source_full)
             path_dest = safe_file_path_str(path_dest)
             path_dest_full = self.__path_expand(path_dest)
+            assert path_source_full.parent == path_dest_full.parent, \
+                "Different parent directories."
+            self.__check_path_full(path_dest_full)
             assert (isfile(path_source_full) or isdir(path_source_full)), \
                 "Source file/folder not found."
             assert not (isfile(path_dest_full) or isdir(path_dest_full)), \
@@ -257,9 +299,13 @@ class StorageDisk(Storage):
     def mv(self, path_source, path_dest):
         try:
             assert self.__initialized, "Storage not initialized."
+            path_source = str(path_source)
+            path_dest = str(path_dest)
             path_source_full = self.__path_expand(path_source)
+            self.__check_path_full(path_source_full)
             path_dest = safe_file_path_str(path_dest)
             path_dest_full = self.__path_expand(path_dest)
+            self.__check_path_full(path_dest_full)
             assert (isfile(path_source_full) or isdir(path_source_full)), \
                 "Source file/folder not found."
             assert not (isfile(path_dest_full) or isdir(path_dest_full)), \
@@ -278,17 +324,21 @@ class StorageDisk(Storage):
     def cp(self, path_source, path_dest):
         try:
             assert self.__initialized, "Storage not initialized."
+            path_source = str(path_source)
+            path_dest = str(path_dest)
             path_source_full = self.__path_expand(path_source)
+            self.__check_path_full(path_source_full)
             path_dest = safe_file_path_str(path_dest)
             path_dest_full = self.__path_expand(path_dest)
+            self.__check_path_full(path_dest_full)
             assert (isfile(path_source_full) or isdir(path_source_full)), \
                 "Source file/folder not found."
             assert not (isfile(path_dest_full) or isdir(path_dest_full)), \
                 "Destination already exists."
             if isfile(path_source_full):
-                copyfile(path_source, path_dest)
+                copyfile(path_source_full, path_dest_full)
             else:
-                copytree(path_source, path_dest)
+                copytree(path_source_full, path_dest_full)
             assert (isfile(path_dest_full) or isdir(path_dest_full)), \
                 "Destination check failed."
             assert (isfile(path_source_full) or isdir(path_source_full)), \
@@ -302,8 +352,10 @@ class StorageDisk(Storage):
     def append(self, path, content):
         try:
             assert self.__initialized, "Storage not initialized."
+            path = str(path)
             path = safe_file_path_str(path)
             path_full = self.__path_expand(path)
+            self.__check_path_full(path_full)
             assert isfile(path_full), "File not found."
             with open(path_full, "a") as f:
                 f.write(content)
