@@ -2,4 +2,4 @@ ENV: TESTING
 PING: PONG
 
 STORAGE_DISK:
-    ROOT_PATH: /tmp/
+    WORKING_PATH: /tmp/
