@@ -7,6 +7,7 @@ from shutil import copyfile, move, copytree, rmtree
 from re import sub
 from boto.s3.connection import S3Connection
 from boto.s3.key import Key
+from io import BytesIO
 from .logger import logger
 from ..storage.storage import Storage
 
@@ -318,8 +319,6 @@ class StorageS3boto(Storage):
             logger.error("Failed to get the size. " + str(e))
 
 
-# TODO 
-
     def upload_from_memory(self, variable, path):
         try:
             assert self.__initialized, "Storage not initialized."
@@ -327,11 +326,13 @@ class StorageS3boto(Storage):
             path = safe_file_path_str(path)
             path_full = self.__path_expand(path)
             self.__check_path_full(path_full)
-            assert not isfile(path_full), "File already exists."
-            assert not isdir(path_full), "Folder already exists."
-            pickle.dump(obj=variable, file=open(path_full, "wb"))
-            assert isfile(path_full), "File check failed."
-            chmod(path_full, 0o777)
+            path_full_4_s3 = self.__full_path_4_s3(path_full)
+            assert not self.exists(path_full_4_s3), "File already exists."
+            assert not self.exists(path_full_4_s3 + "/"), "Folder already exists."
+            content = pickle.dumps(variable)
+            k = self.__connection_bucket.new_key(path_full_4_s3)
+            k.set_contents_from_string(content)
+            assert self.exists(path_full_4_s3), "File check failed."
             logger.debug("upload_from_memory " + str(path) + ": True")
         except Exception as e:
             logger.error("Failed to upload. " + str(e))  
@@ -344,11 +345,20 @@ class StorageS3boto(Storage):
             path = safe_file_path_str(path)
             path_full = self.__path_expand(path)
             self.__check_path_full(path_full)
-            assert isfile(path_full), "File not found."
+            path_full_4_s3 = self.__full_path_4_s3(path_full)
+            assert self.exists(path_full_4_s3), "File not found."
+            with BytesIO() as b:
+                k = self.__connection_bucket.get_key(path_full_4_s3)
+                k.get_file(b)
+                b.seek(0)
+                output = pickle.loads(b.read())
             logger.debug("download_to_memory " + str(path) + ": True")
-            return pickle.load(file=open(path_full, "rb"))
+            return output
         except Exception as e:
             logger.error("Failed to download. " + str(e))  
+
+
+# TODO 
 
 
     def rename(self, path_source, path_dest):
