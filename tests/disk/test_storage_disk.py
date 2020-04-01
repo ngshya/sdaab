@@ -11,7 +11,7 @@ from sdaab.utils.get_config import dict_config
 
 def generate_folder_path(dict_config=dict_config):
     assert dict_config["ENV"] == "TESTING"
-    root_path = Path(dict_config["STORAGE_DISK"]["WORKING_PATH"] + \
+    root_path = Path(dict_config["DISK"]["ROOT_PATH"] + \
         "/sdaab-" + datetime.now().strftime("%Y-%m-%d-%H-%M-%S-%f-") + \
         str(randint(0, 1000)))
     makedirs(root_path)

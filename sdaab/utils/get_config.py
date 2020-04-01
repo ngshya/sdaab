@@ -1,6 +1,7 @@
 import yaml
 import os
 from pathlib import Path
+from os.path import dirname, realpath
 from .logger import logger
 
 
@@ -25,7 +26,7 @@ def get_config(path_env_yaml=None):
             os.environ["ENV_RUN"] = "DEVELOPMENT"
         str_env = os.environ["ENV_RUN"].lower()
         logger.info("Environment set to " + str_env + ".")
-        path_env_yaml = Path("config/" + str_env + ".yml")
+        path_env_yaml = Path(dirname(dirname(dirname(realpath(__file__)))) + "/config/" + str_env + ".yml")
 
     if os.path.isfile(path_env_yaml):
         dict_config = yaml.safe_load(open(path_env_yaml, "r"))
