@@ -1,9 +1,10 @@
 from abc import ABC, abstractmethod
 import pickle
 from pathlib import Path
-from os import makedirs, chmod, remove, walk, rename
-from os.path import isdir, isfile, getsize, join, islink
-from shutil import copyfile, move, copytree, rmtree
+#from os import makedirs, chmod, remove, walk, rename
+#from os.path import isdir, isfile, getsize, join, islink
+#from shutil import copyfile, move, copytree, rmtree
+from os.path import isdir, isfile
 from re import sub
 from boto.s3.connection import S3Connection
 from boto.s3.key import Key
@@ -52,7 +53,7 @@ class StorageS3boto(Storage):
             root_path = Path(root_path).resolve()
             assert isdir(root_path), "Root folder not found."
             self.__root_path_full = root_path
-            self.__cd_full = root_path
+            self.__cd_full = str(root_path)
             self.__cd = Path("/")
 
             self.__host = str(host)
@@ -100,7 +101,7 @@ class StorageS3boto(Storage):
         elif path[0] == "/":
             path_full = Path(str(self.__root_path_full) + path).resolve()
         else:
-            path_full = (self.__cd_full / path).resolve()
+            path_full = (Path(self.__cd_full) / path).resolve()
         return path_full
     
 
@@ -115,6 +116,12 @@ class StorageS3boto(Storage):
         if path_full[0] == "/":
             path_full = path_full[1:]
         return path_full
+    
+
+    def __exists(self, key):
+        k = Key(self.__connection_bucket)
+        k.key = key
+        return k.exists()
 
 
     def get_type(self):
@@ -132,9 +139,11 @@ class StorageS3boto(Storage):
             path = str(path)
             path_full = self.__path_expand(path)
             self.__check_path_full(path_full)
-            assert self.exists(self.__full_path_4_s3(path_full)), \
-                "Current directory not found."
-            self.__cd_full = path_full
+            path_full = str(path_full)
+            if path_full[-1] != "/":
+                path_full = path_full + "/"
+            assert self.__exists(self.__full_path_4_s3(path_full)), "Current directory not found."
+            self.__cd_full = str(path_full)
             if path[0] == "/":
                 self.__cd = Path(path).resolve()
             else:
@@ -160,12 +169,17 @@ class StorageS3boto(Storage):
             path = str(path)
             path_full = self.__path_expand(path)
             self.__check_path_full(path_full)
-            path_full_4_s3 = self.__full_path_4_s3(path_full) + "/"
-            assert self.exists(path_full_4_s3),\
-                 "Folder not found."
-            iterable = self.__connection_bucket.list(prefix=path_full_4_s3)
-            output = [x.name for x in iterable if x.name != path_full_4_s3]
-            output = [sub("^%s" % path_full_4_s3, "", x) for x in output]
+            path_full_4_s3 = self.__full_path_4_s3(path_full) 
+            if path_full_4_s3[-1] != "/":
+                path_full_4_s3 = path_full_4_s3 + "/"
+            assert self.__exists(path_full_4_s3), "Folder not found."
+            if path_full_4_s3 != "/":
+                iterable = self.__connection_bucket.list(prefix=path_full_4_s3)
+                output = [x.name for x in iterable if x.name != path_full_4_s3]
+                output = [sub("^%s" % path_full_4_s3, "", x) for x in output]
+            else:
+                iterable = self.__connection_bucket.list()
+                output = [x.name for x in iterable]
             logger.debug("ls " + str(path) + ": " + " ".join(output))
             return output
         except Exception as e:
@@ -202,11 +216,11 @@ class StorageS3boto(Storage):
             path_full = self.__path_expand(path)
             self.__check_path_full(path_full)
             path_full_4_s3 = self.__full_path_4_s3(path_full) + "/"
-            assert not self.exists(path_full_4_s3), "Directory already exists."
-            k = self.__connection_bucket
-            k.new_key(path_full_4_s3)
+            assert not self.__exists(path_full_4_s3), \
+                "Directory already exists."
+            k = self.__connection_bucket.new_key(path_full_4_s3)
             k.set_contents_from_string('')
-            assert self.exists(path_full_4_s3), "Directory check failed."
+            assert self.__exists(path_full_4_s3), "Directory check failed."
             logger.debug("mkdir " + str(path) + ": True")
         except Exception as e:
             logger.error("Failed to create the directory. " + str(e))  
@@ -222,14 +236,14 @@ class StorageS3boto(Storage):
             self.__check_path_full(path_full)
             path_full_4_s3 = self.__full_path_4_s3(path_full)
             assert isfile(path_source), "Source file not found."
-            assert not self.exists(path_full_4_s3), \
+            assert not self.__exists(path_full_4_s3), \
                 "Destination file already exists."
-            assert not self.exists(path_full_4_s3 + "/"), \
+            assert not self.__exists(path_full_4_s3 + "/"), \
                 "Destination folder already exists."
             k = self.__connection_bucket.new_key(path_full_4_s3)
             with open(path_source, "rb") as fp:
                 k.set_contents_from_file(fp)
-            assert self.exists(path_full_4_s3), \
+            assert self.__exists(path_full_4_s3), \
                 "Destination file check failed."
             logger.debug("upload " + str(path_dest) + ": True")
         except Exception as e:
@@ -245,7 +259,7 @@ class StorageS3boto(Storage):
             path_full = self.__path_expand(path_source)
             self.__check_path_full(path_full)
             path_full_4_s3 = self.__full_path_4_s3(path_full)
-            assert self.exists(path_full_4_s3), "Source file not found."
+            assert self.__exists(path_full_4_s3), "Source file not found."
             assert not isfile(path_dest), "Destination file already exists."
             assert not isdir(path_dest), "Destination folder already exists."
             with open(path_dest, "wb") as fp:
@@ -266,18 +280,18 @@ class StorageS3boto(Storage):
             path_full = self.__path_expand(path)
             self.__check_path_full(path_full)
             path_full_4_s3 = self.__full_path_4_s3(path_full)
-            if self.exists(path_full_4_s3):
+            if self.__exists(path_full_4_s3):
                 self.__connection_bucket.delete_key(path_full_4_s3)
-            elif self.exists(path_full_4_s3 + "/"):
-                iterable = self.__connection_bucket\ 
+            elif self.__exists(path_full_4_s3 + "/"):
+                iterable = self.__connection_bucket\
                     .list(prefix=path_full_4_s3 + "/")
                 output = [x.name for x in iterable]
                 for k in output:
                     self.__connection_bucket.delete_key(k)
             else:
                 error("File/folder not found.")
-            assert ((not self.exists(path_full_4_s3)) \
-                and (not self.exists(path_full_4_s3 + "/"))), \
+            assert ((not self.__exists(path_full_4_s3)) \
+                and (not self.__exists(path_full_4_s3 + "/"))), \
                 "File/folder still exists."
             logger.debug("rm " + str(path) + ": True")
         except Exception as e:
@@ -292,12 +306,12 @@ class StorageS3boto(Storage):
             path_full = self.__path_expand(path)
             self.__check_path_full(path_full)
             path_full_4_s3 = self.__full_path_4_s3(path_full)
-            if self.exists(path_full_4_s3):
+            if self.__exists(path_full_4_s3):
                 output = self.__connection_bucket.get_key(path_full_4_s3).size
-            elif self.exists(path_full_4_s3 + "/"):
-                iterable = self.__connection_bucket\ 
+            elif self.__exists(path_full_4_s3 + "/"):
+                iterable = self.__connection_bucket\
                     .list(prefix=path_full_4_s3 + "/")
-            output = sum([x.size for x in iterable])
+                output = sum([x.size for x in iterable])
             else:
                 error( "File/folder not found.")
             logger.debug("size " + str(path) + ": " + str(output))
@@ -314,12 +328,12 @@ class StorageS3boto(Storage):
             path_full = self.__path_expand(path)
             self.__check_path_full(path_full)
             path_full_4_s3 = self.__full_path_4_s3(path_full)
-            assert not self.exists(path_full_4_s3), "File already exists."
-            assert not self.exists(path_full_4_s3 + "/"), "Folder already exists."
+            assert not self.__exists(path_full_4_s3), "File already exists."
+            assert not self.__exists(path_full_4_s3 + "/"), "Folder already exists."
             content = pickle.dumps(variable)
             k = self.__connection_bucket.new_key(path_full_4_s3)
             k.set_contents_from_string(content)
-            assert self.exists(path_full_4_s3), "File check failed."
+            assert self.__exists(path_full_4_s3), "File check failed."
             logger.debug("upload_from_memory " + str(path) + ": True")
         except Exception as e:
             logger.error("Failed to upload. " + str(e))  
@@ -333,7 +347,7 @@ class StorageS3boto(Storage):
             path_full = self.__path_expand(path)
             self.__check_path_full(path_full)
             path_full_4_s3 = self.__full_path_4_s3(path_full)
-            assert self.exists(path_full_4_s3), "File not found."
+            assert self.__exists(path_full_4_s3), "File not found."
             with BytesIO() as b:
                 k = self.__connection_bucket.get_key(path_full_4_s3)
                 k.get_file(b)
@@ -359,22 +373,27 @@ class StorageS3boto(Storage):
             path_dest_full_4_s3 = self.__full_path_4_s3(path_dest_full)
             assert path_source_full.parent == path_dest_full.parent, \
                 "Different parent directories."
-            iterable = self.__connection_bucket\ 
+            iterable = self.__connection_bucket\
                     .list(prefix=path_source_full_4_s3)
             array_sources = [x.name for x in iterable]
-            assert len(output) > 0, \
+            assert len(array_sources) > 0, \
                 "Source file/folder not found."
-            array_dests = [sub(path_source_full_4_s3, path_dest_full_4_s3, x) \
+            array_dests = [sub("^"+path_source_full_4_s3, \
+                path_dest_full_4_s3, x) \
                 for x in array_sources]
             for item_dest in array_dests:
-                assert not self.exists("/" + item_dest), \
+                assert not self.__exists(item_dest), \
                     "Destination already exists."
             for j, item_source in enumerate(array_sources):
-                self.__connection_bucket.copy_key(array_dests[j], self.__bucket, item_source)
+                self.__connection_bucket.copy_key(
+                    array_dests[j], 
+                    self.__bucket, 
+                    item_source
+                )
                 self.__connection_bucket.delete_key(item_source)
-                assert self.exists("/" + array_dests[j]), \
+                assert self.__exists(array_dests[j]), \
                     "Destination check failed."
-                assert not self.exists("/" + item_source), \
+                assert not self.__exists(item_source), \
                     "Source check failed."
             logger.debug("rename " + str(path_source) + \
                 " --> " + str(path_dest))
@@ -394,22 +413,27 @@ class StorageS3boto(Storage):
             path_dest_full = self.__path_expand(path_dest)
             self.__check_path_full(path_dest_full)
             path_dest_full_4_s3 = self.__full_path_4_s3(path_dest_full)
-            iterable = self.__connection_bucket\ 
+            iterable = self.__connection_bucket\
                     .list(prefix=path_source_full_4_s3)
             array_sources = [x.name for x in iterable]
-            assert len(output) > 0, \
+            assert len(array_sources) > 0, \
                 "Source file/folder not found."
-            array_dests = [sub(path_source_full_4_s3, path_dest_full_4_s3, x) \
+            array_dests = [sub("^"+path_source_full_4_s3, \
+                path_dest_full_4_s3, x) \
                 for x in array_sources]
             for item_dest in array_dests:
-                assert not self.exists("/" + item_dest), \
+                assert not self.__exists(item_dest), \
                     "Destination already exists."
             for j, item_source in enumerate(array_sources):
-                self.__connection_bucket.copy_key(array_dests[j], self.__bucket, item_source)
+                self.__connection_bucket.copy_key(
+                    array_dests[j], 
+                    self.__bucket, 
+                    item_source
+                )
                 self.__connection_bucket.delete_key(item_source)
-                assert self.exists("/" + array_dests[j]), \
+                assert self.__exists(array_dests[j]), \
                     "Destination check failed."
-                assert not self.exists("/" + item_source), \
+                assert not self.__exists(item_source), \
                     "Source check failed."
             logger.debug("mv " + str(path_source) + \
                 " --> " + str(path_dest))
@@ -429,22 +453,27 @@ class StorageS3boto(Storage):
             path_dest_full = self.__path_expand(path_dest)
             self.__check_path_full(path_dest_full)
             path_dest_full_4_s3 = self.__full_path_4_s3(path_dest_full)
-            iterable = self.__connection_bucket\ 
+            iterable = self.__connection_bucket\
                     .list(prefix=path_source_full_4_s3)
             array_sources = [x.name for x in iterable]
-            assert len(output) > 0, \
+            assert len(array_sources) > 0, \
                 "Source file/folder not found."
-            array_dests = [sub(path_source_full_4_s3, path_dest_full_4_s3, x) \
+            array_dests = [sub("^"+path_source_full_4_s3, path_dest_full_4_s3, x) \
                 for x in array_sources]
+            k = Key(self.__connection_bucket)
             for item_dest in array_dests:
-                assert not self.exists("/" + item_dest), \
-                    "Destination already exists."
+                k.key = item_dest
+                assert not k.exists(), "Destination already exists."
             for j, item_source in enumerate(array_sources):
-                self.__connection_bucket.copy_key(array_dests[j], self.__bucket, item_source)
-                assert self.exists("/" + array_dests[j]), \
-                    "Destination check failed."
-                assert self.exists("/" + item_source), \
-                    "Source check failed."
+                self.__connection_bucket.copy_key(
+                    array_dests[j], 
+                    self.__bucket, 
+                    item_source
+                )
+                k.key = array_dests[j]
+                assert k.exists(), "Destination check failed."
+                k.key = item_source
+                assert k.exists(), "Source check failed."
             logger.debug("cp " + str(path_source) + \
                 " --> " + str(path_dest))
         except Exception as e:
