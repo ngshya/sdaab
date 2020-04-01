@@ -31,19 +31,6 @@ def safe_file_path_str(path):
     return path
 
 
-def get_folder_size(start_path = '.'):
-    # This function is copied from:
-    # https://stackoverflow.com/questions/1392413/
-    total_size = 0
-    for dirpath, dirnames, filenames in walk(start_path):
-        for f in filenames:
-            fp = join(dirpath, f)
-            # skip if it is symbolic link
-            if not islink(fp):
-                total_size += getsize(fp)
-    return total_size
-
-
 class StorageS3boto(Storage):
 
 
