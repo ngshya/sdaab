@@ -284,9 +284,9 @@ class StorageS3boto(Storage):
             elif self.exists(path_full_4_s3 + "/"):
                 iterable = self.__connection_bucket\ 
                     .list(prefix=path_full_4_s3 + "/")
-            output = [x.name for x in iterable]
-            for k in output:
-                self.__connection_bucket.delete_key(k)
+                output = [x.name for x in iterable]
+                for k in output:
+                    self.__connection_bucket.delete_key(k)
             else:
                 error("File/folder not found.")
             assert ((not self.exists(path_full_4_s3)) \
@@ -358,34 +358,51 @@ class StorageS3boto(Storage):
             logger.error("Failed to download. " + str(e))  
 
 
-# TODO 
-
-
     def rename(self, path_source, path_dest):
         try:
             assert self.__initialized, "Storage not initialized."
             path_source = str(path_source)
-            path_dest = str(path_dest)
             path_source_full = self.__path_expand(path_source)
             self.__check_path_full(path_source_full)
+            path_source_full_4_s3 = self.__full_path_4_s3(path_source_full)
+
+            path_dest = str(path_dest)
             path_dest = safe_file_path_str(path_dest)
             path_dest_full = self.__path_expand(path_dest)
+            self.__check_path_full(path_dest_full)
+            path_dest_full_4_s3 = self.__full_path_4_s3(path_dest_full)
+
             assert path_source_full.parent == path_dest_full.parent, \
                 "Different parent directories."
-            self.__check_path_full(path_dest_full)
-            assert (isfile(path_source_full) or isdir(path_source_full)), \
+
+            iterable = self.__connection_bucket\ 
+                    .list(prefix=path_source_full_4_s3)
+            array_sources = [x.name for x in iterable]
+
+            assert len(output) > 0, \
                 "Source file/folder not found."
-            assert not (isfile(path_dest_full) or isdir(path_dest_full)), \
-                "Destination already exists."
-            rename(path_source_full, path_dest_full)
-            assert (isfile(path_dest_full) or isdir(path_dest_full)), \
-                "Destination check failed."
-            assert not (isfile(path_source_full) or isdir(path_source_full)), \
-                "Source check failed."
+
+            array_dests = [sub(path_source_full_4_s3, path_dest_full_4_s3, x) \
+                for x in array_sources]
+
+            for item_dest in array_dests:
+                assert not self.exists("/" + item_dest), \
+                    "Destination already exists."
+
+            for j, item_source in enumerate(array_sources):
+                self.__connection_bucket.copy_key(array_dests[j], self.__bucket, item_source)
+                self.__connection_bucket.delete_key(item_source)
+                assert self.exists("/" + array_dests[j]), \
+                    "Destination check failed."
+                assert not self.exists("/" + item_source), \
+                    "Source check failed."
             logger.debug("rename " + str(path_source) + \
                 " --> " + str(path_dest))
         except Exception as e:
             logger.error("Failed to rename. " + str(e)) 
+
+
+# TODO 
 
 
     def mv(self, path_source, path_dest):
