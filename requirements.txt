@@ -1,1 +1,2 @@
-PyYAML==5.3
+boto==2.49.0
+PyYAML==5.3.1
