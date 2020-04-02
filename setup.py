@@ -10,7 +10,7 @@ else:
     with open('README.md', encoding='utf-8') as f:
         long_description = f.read()
 
-with(open("sdaab/version.txt", "r")) as f:
+with(open("version.txt", "r")) as f:
     version = f.read()
 
 with(open("requirements.txt", "r")) as f:
@@ -29,6 +29,5 @@ setup(
     license='GPLv3',
     packages=find_packages(exclude=["tests"]),
     install_requires=requirements,
-    scripts=['bin'],
     include_package_data=True,
 )

@@ -4,6 +4,7 @@ import yaml
 import os
 import re
 from pathlib import Path
+from os.path import dirname, realpath
 
 
 if "LOG_LEVEL" not in os.environ:
@@ -52,7 +53,7 @@ def constructor_env_variables(loader, node):
 
 def get_logger(
     str_logger_name, 
-    yaml_logging=Path(__file__).parent.parent.parent / ("config/logging.yml")
+    yaml_logging=Path(dirname(dirname(realpath(__file__))) + "/config/logging.yml")
 ):
     '''
     Get a custom logger.
