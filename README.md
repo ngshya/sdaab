@@ -6,12 +6,16 @@ Simple Data Abstraction provides an abstraction layer to access different types 
 Basic file management methods are implemented for each type of storage. 
 
 
+## Installation
+
 To install the package:
 ~~~~
 pip install sdaab
 ~~~~
 
-Example of usage:
+
+## Example of usage:
+
 ~~~~Python
 from sdaab.disk.storage_disk import StorageDisk
 
@@ -41,4 +45,3 @@ s = StorageS3boto(
     root_path="/"
 )
 ~~~~
-
