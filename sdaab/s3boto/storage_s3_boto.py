@@ -333,9 +333,8 @@ class StorageS3boto(Storage):
             assert self.__initialized, "Storage not initialized."
             path = str(path)
             path = safe_file_path_str(path)
-            path_full = self.__path_expand(path)
-            self.__check_path_full(path_full)
-            path_full_4_s3 = self.__full_path_4_s3(path_full)
+            path_full = self.__path_expand(path, bool_file=True)
+            path_full_4_s3 = self.__rm_lead_slash(path_full)
             assert not self.__exists(path_full_4_s3), "File already exists."
             assert not self.__exists(path_full_4_s3 + "/"), "Folder already exists."
             content = pickle.dumps(variable)
@@ -352,9 +351,8 @@ class StorageS3boto(Storage):
             assert self.__initialized, "Storage not initialized."
             path = str(path)
             path = safe_file_path_str(path)
-            path_full = self.__path_expand(path)
-            self.__check_path_full(path_full)
-            path_full_4_s3 = self.__full_path_4_s3(path_full)
+            path_full = self.__path_expand(path, bool_file=True)
+            path_full_4_s3 = self.__rm_lead_slash(path_full)
             assert self.__exists(path_full_4_s3), "File not found."
             with BytesIO() as b:
                 k = self.__connection_bucket.get_key(path_full_4_s3)

@@ -198,6 +198,20 @@ def test_s3boto_size_rm():
     s3boto.upload(root_path_local / "text.txt", "folder/text.txt")
     assert s3boto.size("/folder/text.txt") \
         == getsize(root_path_local / "text.txt")
+    s3boto.rm("folder/text.txt")
+    assert not s3boto.exists("folder/text.txt")
+    with open(root_path_local / "text_new.txt", "a") as f:
+        f.write("buongiorno")
+    s3boto.upload(root_path_local / "text_new.txt", "folder/text_new.txt")
+    assert s3boto.size("/folder/text_new.txt") \
+        == getsize(root_path_local / "text_new.txt")
+    s3boto.cd("folder")
+    assert s3boto.exists("text_new.txt")
+    s3boto.rm("/folder/text_new.txt")    
+    assert not s3boto.exists("text_new.txt")
+    s3boto.cd("..")
+    s3boto.rm("folder")
+    assert not s3boto.exists("folder")
     remove_folder(root_path_local)
     remove_s3_folder(s3boto_parent, root_path)
 
