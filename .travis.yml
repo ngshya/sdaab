@@ -1,0 +1,14 @@
+language: python
+python:
+  - "pypy3"  # currently Python 3.6.1,  PyPy 7.1.1-beta0
+install:
+  - pip install -r requirements.txt
+  - pip install .
+
+deploy:
+  provider: pypi
+  user: __token__
+  password:
+    secure: OWrRVXyUp/W41RqIGAyptw8e7EyU559eD/qgFJcoR91t/lzArags0NFIknOQEIPRugnALjLQVNVEyRF9vJmX4U3QFOKR9xcPngCdEpbkwwm8lONBhGel7IBcsCPPvlAwApcYEvHR4hF4c3+5QoTXiO1HGygvilNCJY6xAn0x1mcIua00QOebL4Q2r7bs2DzkRJWL1mMHFvJC48WWH7i0nU/zZIyqCI4Q4Ri8N/kzTUY/iUogr3fS6PrKh3wXB83DWaoLR5tWAipbb63e7A9YeSNxvASZFDsNz8ejh7Fjjarw/5/bg00iy0ZY6VQuRyEH6xWZqLVamUziS7YwGU/UWVTq4XyvfdhAMD4Tb4aBPPQXK1VBJ1MT5YKfENzMf8FVQd2ImS1C++xxEFy3UyMY39BRA34YLtyH30TgwI7RwmhdmAYky8BUT4KvVHcZS6/i7q39cVrjfcekiKSaKk9ePypRfYhQSOg5UNFCBF5k09JLbQ8UKkWGiX5mSmvB8ClTT90d4C9QpPmI4JttJctHp3VLZWqDKjxZQXwI13WJeochA7nTHrKheHGkIWYtwpZN37Qss8q92DxVVOZiTbNwa8eFjgHNRDyRdmZAL9/u6+o3JS/qk8q1JfnPWFHxulwdh+4KG9rh4KRUwic4fSncO0wBTljNA9bLUIL30JmuQXk=
+  on:
+    branch: production
