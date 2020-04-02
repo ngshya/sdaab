@@ -9,6 +9,7 @@ from re import sub
 from boto.s3.connection import S3Connection
 from boto.s3.key import Key
 from io import BytesIO
+from numpy import unique
 from .logger import logger
 from ..storage.storage import Storage
 
@@ -186,12 +187,13 @@ class StorageS3boto(Storage):
                 iterable = self.__connection_bucket.list(prefix=path_full_4_s3)
                 output = [x.name for x in iterable]
                 output = [x.name for x in iterable if x.name != path_full_4_s3]
-                output = [sub("^"+path_full_4_s3+"|/$", "", x) for x in output]
+                output = [sub("^"+path_full_4_s3+"|/.*$", "", x) for x in output]
             else:
                 iterable = self.__connection_bucket.list()
                 output = [x.name for x in iterable]
+                output = [sub("/.*$", "", x) for x in output]
             logger.debug("ls " + str(path) + ": " + " ".join(output))
-            return output
+            return unique(output)
         except Exception as e:
             logger.error("Failed to list objects inside the folder. " + str(e))
 

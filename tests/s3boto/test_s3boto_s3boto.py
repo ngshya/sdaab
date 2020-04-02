@@ -27,12 +27,10 @@ def remove_folder(path):
 
 def get_s3_obj(dict_config=dict_config):
     assert dict_config["ENV"] == "TESTING"
-    
     root_path = "sdaab-" \
         + datetime.now().strftime("%Y-%m-%d-%H-%M-%S-%f-") \
         + str(randint(0, 1000)) \
         + "/"
-
     s3boto_parent = StorageS3boto(
         host=dict_config["S3"]["HOST"],
         port=dict_config["S3"]["PORT"],
@@ -43,9 +41,7 @@ def get_s3_obj(dict_config=dict_config):
         secure=dict_config["S3"]["SECURE"],
         root_path=dict_config["S3"]["ROOT_PATH"]
     )
-
     s3boto_parent.mkdir(root_path)
-
     s3boto = StorageS3boto(
         host=dict_config["S3"]["HOST"],
         port=dict_config["S3"]["PORT"],
@@ -56,7 +52,6 @@ def get_s3_obj(dict_config=dict_config):
         secure=dict_config["S3"]["SECURE"],
         root_path=dict_config["S3"]["ROOT_PATH"] + root_path
     )
-
     return s3boto, root_path, s3boto_parent
 
 
@@ -67,46 +62,18 @@ def remove_s3_folder(s3boto, folder):
 
 
 def test_s3boto_init():
-
     s3boto, root_path, s3boto_parent = get_s3_obj()
-
     assert s3boto.initialized()
     assert s3boto.get_type() == "S3boto"
     assert s3boto_parent.initialized()
     assert s3boto_parent.get_type() == "S3boto"
     assert type(root_path) == str
-
     remove_s3_folder(s3boto_parent, root_path)
 
-    #s3boto = StorageS3boto(
-    #    host=dict_config["S3"]["HOST"],
-    #    port=dict_config["S3"]["PORT"],
-    #    access_key=dict_config["S3"]["ACCESS_KEY"],
-    #    secret_key=dict_config["S3"]["SECRET_KEY"], 
-    #    bucket=dict_config["S3"]["BUCKET"],
-    #    calling_format=dict_config["S3"]["CALLING_FORMAT"],
-    #    secure=dict_config["S3"]["SECURE"],
-    #    root_path="ciao"
-    #)
-#
-    ##assert not s3boto.initialized()
-#
-    #s3boto = StorageS3boto(
-    #    host=dict_config["S3"]["HOST"],
-    #    port=dict_config["S3"]["PORT"],
-    #    access_key=dict_config["S3"]["ACCESS_KEY"],
-    #    secret_key=dict_config["S3"]["SECRET_KEY"], 
-    #    bucket=dict_config["S3"]["BUCKET"],
-    #    calling_format=dict_config["S3"]["CALLING_FORMAT"],
-    #    secure=dict_config["S3"]["SECURE"],
-    #    root_path="/folder-not-found-1234"
-    #)
-
-    #assert not s3boto.initialized()
 
 
-'''
-def test_s3boto_mkdir():
+
+def test_s3boto_mkdir_ls():
 
     s3boto, root_path, s3boto_parent = get_s3_obj()
     
@@ -125,7 +92,7 @@ def test_s3boto_mkdir():
     tmp_folders = s3boto.ls()
     assert sorted(tmp_folders) == ["tmp1", "tmp2"]
     
-    s3boto.mkdir("tmp1/tmp3")
+    s3boto.mkdir("/tmp1/tmp3")
     assert s3boto.exists("tmp1/tmp3/")
     assert s3boto.exists("tmp1/tmp3")
     assert s3boto.exists("/tmp1/tmp3")
@@ -133,6 +100,7 @@ def test_s3boto_mkdir():
     remove_s3_folder(s3boto_parent, root_path)
 
 
+'''
 def test_storage_disk_get_type():
 
     root_path = generate_folder_path()
