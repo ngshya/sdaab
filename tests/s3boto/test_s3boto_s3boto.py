@@ -73,7 +73,7 @@ def test_s3boto_init():
 
 
 
-def test_s3boto_mkdir_ls():
+def test_s3boto_mkdir_ls_exists():
     s3boto, root_path, s3boto_parent = get_s3_obj()
     s3boto.mkdir("/tmp1")
     assert s3boto.exists("tmp1/")
@@ -122,36 +122,24 @@ def test_s3boto_mkdir_cd_pwd():
     remove_s3_folder(s3boto_parent, root_path)
 
 
+def test_s3boto_cd_ls_exists():
+    s3boto, root_path, s3boto_parent = get_s3_obj()
+    s3boto.mkdir("level1")
+    s3boto.cd("level1")
+    s3boto.mkdir("level2")
+    s3boto.cd("level2")
+    s3boto.mkdir("level3")
+    s3boto.cd("level3")   
+    assert s3boto.ls("/") == ["level1"]
+    assert s3boto.ls("/level1/level2") == ["level3"]
+    assert s3boto.exists("/level1/level2/level3")
+    s3boto.cd("/")
+    assert s3boto.exists("level1/level2/level3")
+    assert s3boto.exists("/level1/level2/")
+    remove_s3_folder(s3boto_parent, root_path)
+
+
 '''
-def test_storage_disk_cd_ls_exists():
-
-    root_path = generate_folder_path()
-    assert isdir(root_path)
-    s = StorageDisk(root_path=root_path)
-    assert s.initialized()
-
-    makedirs(root_path / "level1/level2")
-    Path(root_path / "level1/level2/level2.txt").touch()
-    Path(root_path / "level1/level1.txt").touch()
-    assert s.ls() == ["level1"]
-    assert sorted(s.ls("level1")) == ["level1.txt", "level2"]
-    s.cd("level1")
-    assert sorted(s.ls()) == ["level1.txt", "level2"]
-    assert s.ls("/level1/level2") == ["level2.txt"]
-    assert s.exists("level1.txt")
-    assert s.exists("/level1/level2/level2.txt")
-    makedirs(root_path / "level1/level2/level3")
-    assert s.exists("/level1/level2/level3")
-    assert s.ls("/level1/level2/level3") == []
-    assert s.ls("/folder/that/does/not/exist") is None
-    s.cd("/level1/level2/level3")
-    assert not s.exists("level4.txt")
-    assert not s.exists("level4")
-    assert s.exists("/level1/level2/level3")
-
-    remove_folder(root_path)
-
-
 def test_storage_disk_upload():
 
     root_path = generate_folder_path()
