@@ -49,13 +49,14 @@ class StorageS3boto(Storage):
         try:
             self.__storage_type = "S3boto"
             root_path = str(root_path)
+            assert len(root_path) > 0, "No root path provided."
             assert root_path[0] == "/", "Root path should start with /."
-            root_path = Path(root_path).resolve()
-            assert isdir(root_path), "Root folder not found."
+            root_path = str(Path(root_path).resolve())
+            if root_path[-1] != "/":
+                root_path = root_path + "/"
             self.__root_path_full = root_path
-            self.__cd_full = str(root_path)
-            self.__cd = Path("/")
-
+            self.__cd_full = root_path
+            self.__cd = "/"
             self.__host = str(host)
             self.__port = int(port)
             self.__access_key = str(access_key)
@@ -82,6 +83,11 @@ class StorageS3boto(Storage):
             self.__connection_bucket = self.__connection\
                 .get_bucket(self.__bucket)
 
+            if len(self.__root_path_full) > 0: 
+                k = Key(self.__connection_bucket)
+                k.key = self.__rm_lead_slash(self.__root_path_full)
+                assert k.exists(), "Root folder not found!"
+
             self.__initialized = True
             logger.debug("Storage DISK initialized.")
 
@@ -94,34 +100,47 @@ class StorageS3boto(Storage):
         return self.__initialized
 
 
-    def __path_expand(self, path):
+    def __path_expand(self, path, bool_file=True):
         path = str(path)
         if len(path) == 0:
+            assert not bool_file, "Not a file."
             path_full = self.__cd_full
         elif path[0] == "/":
-            path_full = Path(str(self.__root_path_full) + path).resolve()
+            path_full = str(Path(self.__root_path_full + path).resolve())
+            if not bool_file:
+                path_full = path_full + "/"
         else:
-            path_full = (Path(self.__cd_full) / path).resolve()
+            path_full = str((Path(self.__cd_full) / path).resolve())
+            if not bool_file:
+                path_full = path_full + "/"
+        assert path_full.startswith(str(self.__root_path_full)), \
+            "Impossible to go beyond the root path."
         return path_full
     
 
-    def __check_path_full(self, path_full):
-        assert str(Path(path_full).resolve())\
-            .startswith(str(self.__root_path_full)), \
-            "Impossible to go beyond the root path."
-
-
-    def __full_path_4_s3(self, path_full):
-        path_full = str(path_full)
-        if path_full[0] == "/":
-            path_full = path_full[1:]
-        return path_full
+    def __rm_lead_slash(self, path):
+        if path[0] == "/":
+            return path[1:]
+        else:
+            return path
     
 
     def __exists(self, key):
         k = Key(self.__connection_bucket)
         k.key = key
         return k.exists()
+
+    
+    def __exists_parent(self, key):
+        key_parent = str(Path("/" + key).parent)
+        if key_parent[-1] != "/":
+            key_parent = key_parent + "/"
+        if key_parent == "/":
+            return True
+        else:
+            k = Key(self.__connection_bucket)
+            k.key = key_parent
+            return k.exists()
 
 
     def get_type(self):
@@ -137,17 +156,10 @@ class StorageS3boto(Storage):
         try:
             assert self.__initialized, "Storage not initialized."
             path = str(path)
-            path_full = self.__path_expand(path)
-            self.__check_path_full(path_full)
-            path_full = str(path_full)
-            if path_full[-1] != "/":
-                path_full = path_full + "/"
-            assert self.__exists(self.__full_path_4_s3(path_full)), "Current directory not found."
-            self.__cd_full = str(path_full)
-            if path[0] == "/":
-                self.__cd = Path(path).resolve()
-            else:
-                self.__cd = Path(str(self.__cd) + "/" + path).resolve()
+            path_full = self.__path_expand(path, bool_file=False)
+            assert self.__exists(path_full), "Current directory not found."
+            self.__cd_full = path_full
+            self.__cd = "/" + sub(self.__root_path_full, "", self.__cd_full)
             logger.debug("cd " + str(path) + ": True")
         except Exception as e:
             logger.error("cd failed. " + str(e))
@@ -167,16 +179,14 @@ class StorageS3boto(Storage):
         try:
             assert self.__initialized, "Storage not initialized."
             path = str(path)
-            path_full = self.__path_expand(path)
-            self.__check_path_full(path_full)
-            path_full_4_s3 = self.__full_path_4_s3(path_full) 
-            if path_full_4_s3[-1] != "/":
-                path_full_4_s3 = path_full_4_s3 + "/"
-            assert self.__exists(path_full_4_s3), "Folder not found."
-            if path_full_4_s3 != "/":
+            path_full = self.__path_expand(path, bool_file=False)
+            path_full_4_s3 = self.__rm_lead_slash(path_full) 
+            if len(path_full_4_s3) > 0:
+                assert self.__exists(path_full_4_s3), "Folder not found."
                 iterable = self.__connection_bucket.list(prefix=path_full_4_s3)
+                output = [x.name for x in iterable]
                 output = [x.name for x in iterable if x.name != path_full_4_s3]
-                output = [sub("^%s" % path_full_4_s3, "", x) for x in output]
+                output = [sub("^"+path_full_4_s3+"|/$", "", x) for x in output]
             else:
                 iterable = self.__connection_bucket.list()
                 output = [x.name for x in iterable]
@@ -190,18 +200,15 @@ class StorageS3boto(Storage):
         try:
             assert self.__initialized, "Storage not initialized."
             path = str(path)
-            path_full = self.__path_expand(path)
-            self.__check_path_full(path_full)
-            path_full = self.__full_path_4_s3(path_full)
+            path_full = self.__path_expand(path, bool_file=True)
+            path_full = self.__rm_lead_slash(path_full)
             k = Key(self.__connection_bucket)
             k.key = path_full
             if k.exists():
                 output = True
-            elif path_full[-1] != "/": 
+            else:
                 k.key = path_full + "/"
                 output = k.exists()
-            else:
-                output = False
             logger.debug("exists " + str(path) + ": " + str(output))
             return output
         except Exception as e:
@@ -213,11 +220,12 @@ class StorageS3boto(Storage):
             assert self.__initialized, "Storage not initialized."
             path = str(path)
             path = safe_folder_path_str(path)
-            path_full = self.__path_expand(path)
-            self.__check_path_full(path_full)
-            path_full_4_s3 = self.__full_path_4_s3(path_full) + "/"
+            path_full = self.__path_expand(path, bool_file=False)
+            path_full_4_s3 = self.__rm_lead_slash(path_full)
             assert not self.__exists(path_full_4_s3), \
                 "Directory already exists."
+            assert self.__exists_parent(path_full_4_s3), \
+                "Parent folder not found"
             k = self.__connection_bucket.new_key(path_full_4_s3)
             k.set_contents_from_string('')
             assert self.__exists(path_full_4_s3), "Directory check failed."
@@ -277,22 +285,19 @@ class StorageS3boto(Storage):
             assert self.__initialized, "Storage not initialized."
             path = str(path)
             path = safe_folder_path_str(path)
-            path_full = self.__path_expand(path)
-            self.__check_path_full(path_full)
-            path_full_4_s3 = self.__full_path_4_s3(path_full)
+            path_full = self.__path_expand(path, bool_file=True)
+            path_full_4_s3 = self.__rm_lead_slash(path_full)
+            assert len(path_full_4_s3) > 0, "Nothing to remove."
             if self.__exists(path_full_4_s3):
                 self.__connection_bucket.delete_key(path_full_4_s3)
-            elif self.__exists(path_full_4_s3 + "/"):
-                iterable = self.__connection_bucket\
-                    .list(prefix=path_full_4_s3 + "/")
-                output = [x.name for x in iterable]
-                for k in output:
-                    self.__connection_bucket.delete_key(k)
-            else:
-                error("File/folder not found.")
-            assert ((not self.__exists(path_full_4_s3)) \
-                and (not self.__exists(path_full_4_s3 + "/"))), \
-                "File/folder still exists."
+                assert not self.__exists(path_full_4_s3), \
+                    "File/folder still exists."
+            iterable = self.__connection_bucket\
+                .list(prefix=path_full_4_s3+"/")
+            output = [x.name for x in iterable]
+            for k in output:
+                self.__connection_bucket.delete_key(k)
+                assert not self.__exists(k), "File/folder still exists."
             logger.debug("rm " + str(path) + ": True")
         except Exception as e:
             logger.error("Failed to remove the file/folder. " + str(e)) 
