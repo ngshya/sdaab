@@ -312,9 +312,8 @@ class StorageS3boto(Storage):
             assert self.__initialized, "Storage not initialized."
             path = str(path)
             path = safe_file_path_str(path)
-            path_full = self.__path_expand(path)
-            self.__check_path_full(path_full)
-            path_full_4_s3 = self.__full_path_4_s3(path_full)
+            path_full = self.__path_expand(path, bool_file=True)
+            path_full_4_s3 = self.__rm_lead_slash(path_full)
             if self.__exists(path_full_4_s3):
                 output = self.__connection_bucket.get_key(path_full_4_s3).size
             elif self.__exists(path_full_4_s3 + "/"):

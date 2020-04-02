@@ -188,39 +188,21 @@ def test_s3boto_upload_download():
     remove_s3_folder(s3boto_parent, root_path)
 
 
-'''
 def test_s3boto_size_rm():
-
-    root_path = generate_folder_path()
-    assert isdir(root_path)
-    s = StorageDisk(root_path=root_path)
-    assert s.initialized()
-
-    makedirs(root_path / "folder")
-    assert s.size("folder") == 0
-
-    with open(root_path / "folder/text.txt", "a") as f:
+    s3boto, root_path, s3boto_parent = get_s3_obj()
+    root_path_local = generate_folder_path()
+    s3boto.mkdir("folder")
+    assert s3boto.size("folder") == 0
+    with open(root_path_local / "text.txt", "a") as f:
         f.write("ciao")
-    assert s.size("folder") == getsize(root_path / "folder/text.txt")
-    assert s.size("/folder/text.txt") == getsize(root_path / "folder/text.txt")
-
-    with open(root_path / "folder/text_2.txt", "a") as f:
-        f.write("buongiorno")
-    assert s.size("folder") == \
-        getsize(root_path / "folder/text.txt") + \
-        getsize(root_path / "folder/text_2.txt")
-
-    s.rm("/folder/text.txt")
-
-    assert not isfile(root_path / "folder/text.txt")
-    
-    s.rm("folder/")
-
-    assert not isdir(root_path / "folder")
-
-    remove_folder(root_path)
+    s3boto.upload(root_path_local / "text.txt", "folder/text.txt")
+    assert s3boto.size("/folder/text.txt") \
+        == getsize(root_path_local / "text.txt")
+    remove_folder(root_path_local)
+    remove_s3_folder(s3boto_parent, root_path)
 
 
+'''
 def test_s3boto_upload_download_memory():
 
     root_path = generate_folder_path()
