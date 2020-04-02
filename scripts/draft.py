@@ -1,17 +1,21 @@
+import sys
+sys.path.append(".")
+
 from sdaab.disk.storage_disk import StorageDisk
 from sdaab.s3boto.storage_s3_boto import StorageS3boto
 from sdaab.utils.get_config import dict_config
 
 
-disk_root_path = dict_config["DISK"]["ROOT_PATH"]
+s3boto = StorageS3boto(
+    host=dict_config["S3"]["HOST"],
+    port=dict_config["S3"]["PORT"],
+    access_key=dict_config["S3"]["ACCESS_KEY"],
+    secret_key=dict_config["S3"]["SECRET_KEY"], 
+    bucket=dict_config["S3"]["BUCKET"],
+    calling_format=dict_config["S3"]["CALLING_FORMAT"],
+    secure=dict_config["S3"]["SECURE"],
+    root_path="/testing/"
+)
 
 
-s = StorageDisk(root_path=disk_root_path)
-
-s.ls()
-s.mkdir("folder1")
-s.ls()
-my_variable = "Hello World!"
-
-s.upload_from_memory(my_variable, "my_variable")
-
+s3boto.mkdir("ciao")
