@@ -99,38 +99,30 @@ def test_s3boto_get_type():
     remove_s3_folder(s3boto_parent, root_path)
 
 
+def test_s3boto_mkdir_cd_pwd():
+    s3boto, root_path, s3boto_parent = get_s3_obj()
+    s3boto.mkdir("/level1")
+    s3boto.mkdir("level1/level2")
+    s3boto.mkdir("/level1/level2/level3")
+    assert s3boto.exists("/level1/level2/level3/")
+    s3boto.cd("level1")
+    assert s3boto.pwd() == "/level1"
+    s3boto.cd("level2")
+    assert s3boto.pwd() == "/level1/level2"
+    s3boto.cd("/level1/level2/level3")
+    assert s3boto.pwd() == "/level1/level2/level3"
+    s3boto.mkdir("level4")
+    assert s3boto.exists("/level1/level2/level3/level4")
+    s3boto.cd("..")
+    assert s3boto.pwd() == "/level1/level2"
+    s3boto.cd("../..")
+    assert s3boto.pwd() == "/"
+    s3boto.cd("../..")
+    assert s3boto.pwd() == "/"
+    remove_s3_folder(s3boto_parent, root_path)
+
+
 '''
-def test_storage_disk_mkdir_cd_pwd():
-
-    root_path = generate_folder_path()
-    assert isdir(root_path)
-    s = StorageDisk(root_path=root_path)
-    assert s.initialized()
-
-    s.mkdir("level1/level2")
-    s.mkdir("/level1/level2/level3")
-    assert isdir(root_path / "level1/level2/level3")
-
-    s.cd("level1")
-    assert s.pwd() == "/level1"
-    s.cd("level2")
-    assert s.pwd() == "/level1/level2"
-    s.cd("/level1/level2/level3")
-    assert s.pwd() == "/level1/level2/level3"
-    s.mkdir("level4")
-    assert isdir(root_path / "level1/level2/level3/level4")
-    s.cd("..")
-    assert s.pwd() == "/level1/level2"
-    s.cd("../..")
-    assert s.pwd() == "/"
-    s.cd("../..")
-    assert s.pwd() == "/"
-    s.mkdir("tmp")
-    isdir(root_path / "tmp")
-
-    remove_folder(root_path)
-
-
 def test_storage_disk_cd_ls_exists():
 
     root_path = generate_folder_path()

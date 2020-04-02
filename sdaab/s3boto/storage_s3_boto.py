@@ -169,9 +169,11 @@ class StorageS3boto(Storage):
     def pwd(self):
         try:
             assert self.__initialized, "Storage not initialized."
-            #logger.debug("pwd full path: " + str(self.__cd_full))
-            logger.debug("pwd: " + str(self.__cd))
-            return str(self.__cd)
+            output = self.__cd
+            if output != "/" and output[-1] == "/":
+                output = output[:-1]
+            logger.debug("pwd: " + output)
+            return output
         except Exception as e:
             logger.error("pwd failed. " + str(e))
 
