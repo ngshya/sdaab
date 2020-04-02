@@ -28,7 +28,7 @@ s.upload_from_memory(v1, "v1")
 v2 = s.download_to_memory(v2, "/folder3/v2")
 
 # When you want to switch to another storage, 
-# just re.initialize the storage object and 
+# just re-initialize the storage object and 
 # the methods will work exactly as before. 
 s = StorageS3boto(
     host="my.domain.com",
