@@ -35,7 +35,7 @@ v2 = s.download_to_memory(v2, "/folder3/v2")
 # just re-initialize the storage object and 
 # the methods will work exactly as before. 
 s = StorageS3boto(
-    host="my.domain.com",
+    host="s3.eu-west-3.amazonaws.com",
     port=1234,
     access_key="xxxyyyzzz",
     secret_key="aaabbbccc", 
