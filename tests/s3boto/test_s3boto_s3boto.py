@@ -243,32 +243,32 @@ def test_s3boto_upload_download_memory():
     remove_s3_folder(s3boto_parent, root_path)
 
 
-'''
 def test_s3boto_rename():
+    s3boto, root_path, s3boto_parent = get_s3_obj()
+    s3boto.mkdir("folder1")
+    s3boto.mkdir("/folder1/folder2")
+    s3boto.upload_from_memory("ciao", "ciao")
+    s3boto.upload_from_memory("ciao", "folder1/ciao1")
+    s3boto.upload_from_memory("ciao", "folder1/folder2/ciao2")
+    s3boto.rename("ciao", "ciao_renamed")
+    assert s3boto.exists("ciao_renamed")
+    assert not s3boto.exists("ciao")
+    s3boto.rename("folder1", "folder1_renamed")
+    assert s3boto.exists("folder1_renamed")
+    assert not s3boto.exists("folder1")
+    s3boto.rename("/folder1_renamed/folder2", "/folder1_renamed/folder2_renamed")
+    assert s3boto.exists("/folder1_renamed/folder2_renamed/ciao2")
+    assert not s3boto.exists("/folder1_renamed/folder2")
+    s3boto.rename("/folder1_renamed/folder2_renamed/ciao2", "/folder1_renamed/folder2_renamed/ciao2_renamed")
+    assert s3boto.exists("/folder1_renamed/folder2_renamed/ciao2_renamed")
+    assert not s3boto.exists("/folder1_renamed/folder2_renamed/ciao2")
+    s3boto.cd("folder1_renamed")
+    s3boto.rename("folder2_renamed", "folder2_renamed_again")
+    assert s3boto.exists("folder2_renamed_again/ciao2_renamed")
+    remove_s3_folder(s3boto_parent, root_path)
 
-    root_path = generate_folder_path()
-    assert isdir(root_path)
-    s = StorageDisk(root_path=root_path)
-    assert s.initialized()
 
-    makedirs(root_path / "level1")
-    Path(root_path / "name0").touch()
-    Path(root_path / "level1/name1").touch()
-    s.rename("name0", "level1/name0")
-    assert isfile(root_path / "name0")
-    s.rename("name0", "new_name0")
-    assert isfile(root_path / "new_name0")
-    assert not isfile(root_path / "name0")
-    s.rename("/level1", "/new_level1")
-    assert isdir(root_path / "new_level1")
-    assert not isdir(root_path / "level1")
-    s.rename("/new_level1/name1", "new_level1/new_name1")
-    assert isfile(root_path / "new_level1/new_name1")
-    assert not isfile(root_path / "new_level1/name1")   
-
-    remove_folder(root_path)
-
-
+'''
 def test_s3boto_mv():
 
     root_path = generate_folder_path()
