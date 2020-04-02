@@ -268,144 +268,76 @@ def test_s3boto_rename():
     remove_s3_folder(s3boto_parent, root_path)
 
 
-'''
+
 def test_s3boto_mv():
-
-    root_path = generate_folder_path()
-    assert isdir(root_path)
-    s = StorageDisk(root_path=root_path)
-    assert s.initialized()
-
-    makedirs(root_path / "folder1")
-    makedirs(root_path / "folder2")
-    Path(root_path / "file0").touch()
-    Path(root_path / "folder1/file0").touch()
-
-    with open(root_path / "file0", "a") as f:
-        f.write("ciao")
-
-    s.mv("file0", "folder2/file0")
-    assert isfile(root_path / "folder2/file0")
-    s.mv("folder2/file0", "/file0")
-    assert isfile(root_path / "file0")
-
-    s.mv("file0", "folder1/file0")
-    assert isfile(root_path/ "file0")
-    assert getsize(root_path / "folder1/file0") != getsize(root_path / "file0")
-
-    s.mv("file0", "/folder2/file0")
-    assert isfile(root_path / "folder2/file0")
-    s.mv("/folder2/file0", "file0")
-    assert isfile(root_path / "file0")
-
-    s.cd("folder2")
-    s.mv("/file0", "file0")
-    assert isfile(root_path / "folder2/file0")
-    s.mv("file0", "/file0")
-
-    s.cd("/")
-    s.mv("file0", "folder2/file0000")
-    assert isfile(root_path / "folder2/file0000")
-    s.mv("folder2/file0000", "/file0")
-
-    s.mv("folder1", "/folder2/folder1111")
-    assert isdir(root_path / "folder2/folder1111")
-    assert isfile(root_path / "folder2/folder1111/file0")
-    assert not isdir(root_path / "folder1")
-
-    remove_folder(root_path)
+    s3boto, root_path, s3boto_parent = get_s3_obj()
+    s3boto.mkdir("folder1")
+    s3boto.mkdir("/folder1/folder2")
+    s3boto.upload_from_memory("ciao", "ciao")
+    s3boto.upload_from_memory("ciao", "folder1/ciao1")
+    s3boto.upload_from_memory("ciao", "folder1/folder2/ciao2")
+    s3boto.mv("ciao", "ciao_moved")
+    assert s3boto.exists("ciao_moved")
+    assert not s3boto.exists("ciao")
+    s3boto.mv("folder1", "folder1_moved")
+    assert s3boto.exists("folder1_moved")
+    assert not s3boto.exists("folder1")
+    s3boto.mv("/folder1_moved/folder2", "/folder1_moved/folder2_moved")
+    assert s3boto.exists("/folder1_moved/folder2_moved/ciao2")
+    assert not s3boto.exists("/folder1_moved/folder2")
+    s3boto.mv("/folder1_moved/folder2_moved/ciao2", "/folder1_moved/folder2_moved/ciao2_moved")
+    assert s3boto.exists("/folder1_moved/folder2_moved/ciao2_moved")
+    assert not s3boto.exists("/folder1_moved/folder2_moved/ciao2")
+    s3boto.cd("folder1_moved")
+    s3boto.mv("folder2_moved", "folder2_moved_again")
+    assert s3boto.exists("folder2_moved_again/ciao2_moved")
+    remove_s3_folder(s3boto_parent, root_path)
 
 
 def test_s3boto_cp():
-
-    root_path = generate_folder_path()
-    assert isdir(root_path)
-    s = StorageDisk(root_path=root_path)
-    assert s.initialized()
-
-    makedirs(root_path / "folder1")
-    makedirs(root_path / "folder2")
-    Path(root_path / "file0").touch()
-    Path(root_path / "folder1/file0").touch()
-
-    with open(root_path / "file0", "a") as f:
-        f.write("ciao")
-
-    s.cp("file0", "folder2/file0")
-    assert isfile(root_path / "folder2/file0")
-    assert isfile(root_path / "file0")
-    assert getsize(root_path / "folder2/file0") == getsize(root_path / "file0")
-    remove(root_path / "folder2/file0")
-
-    s.cp("file0", "folder1/file0")
-    assert isfile(root_path/ "file0")
-    assert getsize(root_path / "folder1/file0") != getsize(root_path / "file0")
-
-    s.cp("file0", "/folder2/file0")
-    assert isfile(root_path / "folder2/file0")
-    assert isfile(root_path / "file0")
-    remove(root_path / "folder2/file0")
-
-    s.cd("folder2")
-    s.cp("/file0", "file0")
-    assert isfile(root_path / "folder2/file0")
-    remove(root_path / "folder2/file0")
-
-    s.cd("/")
-    s.cp("file0", "folder2/file0000")
-    assert isfile(root_path / "folder2/file0000")
-    remove(root_path / "folder2/file0000")
-
-    s.cp("file0", "/folder1/file0")
-    assert getsize(root_path / "file0") != \
-        getsize(root_path / "folder1/file0")
-    remove(root_path / "folder1/file0")
-    s.cp("file0", "/folder1/file0")
-    assert getsize(root_path / "file0") == \
-        getsize(root_path / "folder1/file0")
-    s.cp("folder1", "/folder2/folder1111")
-    assert isdir(root_path / "folder2/folder1111")
-    assert isfile(root_path / "folder2/folder1111/file0")
-    assert isdir(root_path / "folder1")
-    assert getsize(root_path / "folder2/folder1111/file0") == \
-        getsize(root_path / "folder1/file0")
-
-    remove_folder(root_path)
+    s3boto, root_path, s3boto_parent = get_s3_obj()
+    s3boto.mkdir("folder1")
+    s3boto.mkdir("/folder1/folder2")
+    s3boto.upload_from_memory("ciao", "ciao")
+    s3boto.upload_from_memory("ciao", "folder1/ciao1")
+    s3boto.upload_from_memory("ciao", "folder1/folder2/ciao2")
+    s3boto.cp("ciao", "ciao_copied")
+    assert s3boto.exists("ciao_copied")
+    assert s3boto.exists("ciao")
+    s3boto.cp("folder1", "folder1_copied")
+    assert s3boto.exists("folder1_copied")
+    assert s3boto.exists("folder1")
+    s3boto.cp("/folder1_copied/folder2", "/folder1_copied/folder2_copied")
+    assert s3boto.exists("/folder1_copied/folder2_copied/ciao2")
+    assert s3boto.exists("/folder1_copied/folder2")
+    assert s3boto.exists("folder1/folder2")
+    s3boto.cp("/folder1_copied/folder2_copied/ciao2", "/folder1_copied/folder2_copied/ciao2_copied")
+    assert s3boto.exists("/folder1_copied/folder2_copied/ciao2_copied")
+    assert s3boto.exists("folder1_copied/folder2_copied/ciao2")
+    s3boto.cd("folder1_copied")
+    s3boto.cp("folder2_copied", "folder2_copied_again")
+    assert s3boto.exists("folder2_copied_again/ciao2_copied")
+    remove_s3_folder(s3boto_parent, root_path)
 
 
 def test_s3boto_append():
-
-    root_path = generate_folder_path()
-    assert isdir(root_path)
-    s = StorageDisk(root_path=root_path)
-    assert s.initialized()
-
-    makedirs(root_path / "folder")
-    Path(root_path / "folder/file.txt").touch()
-
-    s.append("/folder/file.txt", "ciao")
-    s.append("folder/file.txt", "ciao")
-    s.cd("folder")
-    s.append("file.txt", "ciao")
-
-    with open(root_path / "folder/file.txt", "r") as f:
-        assert f.read() == "ciaociaociao"
-    
-    s.append("/folder/file_not_found", "ciao")
-    assert not isfile(root_path / "folder/file_not_found")
-
-    remove_folder(root_path)
+    s3boto, root_path, s3boto_parent = get_s3_obj()
+    s3boto.upload_from_memory("ciao", "c")
+    s3boto.append("c", "ciao")
+    s3boto.append("c", "ciao")
+    assert s3boto.download_to_memory("c") == "ciaociaociao"
+    s3boto.mkdir("folder")
+    s3boto.cd("folder")
+    s3boto.upload_from_memory("ciao", "c")
+    s3boto.append("c", "ciao")
+    s3boto.append("/folder/c", "come")
+    s3boto.append("c", "ciao")
+    s3boto.cd("/")
+    assert s3boto.download_to_memory("folder/c") == "ciaociaocomeciao"
+    remove_s3_folder(s3boto_parent, root_path)
 
 
 def test_s3boto_tmp():
-
-    root_path = generate_folder_path()
-    assert isdir(root_path)
-    s = StorageDisk(root_path=root_path)
-    assert s.initialized()
-
+    s3boto, root_path, s3boto_parent = get_s3_obj()
     # Do your stuff
-
-    remove_folder(root_path)
-
-'''
+    remove_s3_folder(s3boto_parent, root_path)
