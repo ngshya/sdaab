@@ -216,48 +216,34 @@ def test_s3boto_size_rm():
     remove_s3_folder(s3boto_parent, root_path)
 
 
-'''
 def test_s3boto_upload_download_memory():
-
-    root_path = generate_folder_path()
-    assert isdir(root_path)
-    s = StorageDisk(root_path=root_path)
-    assert s.initialized()
-
+    s3boto, root_path, s3boto_parent = get_s3_obj()
     my_variable = 1102
-
-    s.upload_from_memory(my_variable, "v1")
-    s.upload_from_memory(my_variable, "/v2")
-    makedirs(root_path / "level1")
-    s.upload_from_memory(my_variable, "level1/v3")
-    s.upload_from_memory(my_variable, "/level1/v4")
-    s.cd("level1")
-    s.upload_from_memory(my_variable, "v5")
-    s.upload_from_memory(my_variable, "v6")
-
-    v1 = s.download_to_memory("/v1")
-    v2 = s.download_to_memory("../v2")
-    v3 = s.download_to_memory("/level1/v3")
-    v4 = s.download_to_memory("v4")
-    s.cd("/")
-    v5 = s.download_to_memory("level1/v5")
-    v6 = s.download_to_memory("/level1/v6")
-
-    s.upload_from_memory(my_variable, "/level1/level2/v10")
-    assert not isfile(root_path / "level1/level2/v10")
-    v10 = s.download_to_memory("level1/level2/v10")
-
+    s3boto.upload_from_memory(my_variable, "v1")
+    s3boto.upload_from_memory(my_variable, "/v2")
+    s3boto.mkdir("level1")
+    s3boto.upload_from_memory(my_variable, "level1/v3")
+    s3boto.upload_from_memory(my_variable, "/level1/v4")
+    s3boto.cd("level1")
+    s3boto.upload_from_memory(my_variable, "v5")
+    s3boto.upload_from_memory(my_variable, "v6")
+    v1 = s3boto.download_to_memory("/v1")
+    v2 = s3boto.download_to_memory("../v2")
+    v3 = s3boto.download_to_memory("/level1/v3")
+    v4 = s3boto.download_to_memory("v4")
+    s3boto.cd("/")
+    v5 = s3boto.download_to_memory("level1/v5")
+    v6 = s3boto.download_to_memory("/level1/v6")
     assert my_variable == v1
     assert v1 == v2
     assert v2 == v3
     assert v3 == v4
     assert v4 == v5
     assert v5 == v6
-    assert v10 is None
-
-    remove_folder(root_path)
+    remove_s3_folder(s3boto_parent, root_path)
 
 
+'''
 def test_s3boto_rename():
 
     root_path = generate_folder_path()
