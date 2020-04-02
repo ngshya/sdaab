@@ -74,48 +74,32 @@ def test_s3boto_init():
 
 
 def test_s3boto_mkdir_ls():
-
     s3boto, root_path, s3boto_parent = get_s3_obj()
-    
     s3boto.mkdir("/tmp1")
     assert s3boto.exists("tmp1/")
     assert s3boto.exists("tmp1")
     assert s3boto.exists("/tmp1")
-    
     s3boto.mkdir("tmp2")
     assert s3boto.exists("tmp2/")
     assert s3boto.exists("tmp2")
     assert s3boto.exists("/tmp2")
-
     s3boto.mkdir("tmp2/tmp3")
-    
     tmp_folders = s3boto.ls()
     assert sorted(tmp_folders) == ["tmp1", "tmp2"]
-    
     s3boto.mkdir("/tmp1/tmp3")
     assert s3boto.exists("tmp1/tmp3/")
     assert s3boto.exists("tmp1/tmp3")
     assert s3boto.exists("/tmp1/tmp3")
+    remove_s3_folder(s3boto_parent, root_path)
 
+
+def test_s3boto_get_type():
+    s3boto, root_path, s3boto_parent = get_s3_obj()
+    assert s3boto.get_type() == "S3boto"
     remove_s3_folder(s3boto_parent, root_path)
 
 
 '''
-def test_storage_disk_get_type():
-
-    root_path = generate_folder_path()
-    assert isdir(root_path)
-    s = StorageDisk(root_path=root_path)
-    assert s.initialized()
-
-    assert s.get_type() == "DISK"
-
-    s = StorageDisk(root_path="this/folder/does/not/exist")
-    assert s.get_type() is None
-
-    remove_folder(root_path)
-
-
 def test_storage_disk_mkdir_cd_pwd():
 
     root_path = generate_folder_path()
