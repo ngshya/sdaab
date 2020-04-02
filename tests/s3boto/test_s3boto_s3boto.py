@@ -162,45 +162,33 @@ def test_s3boto_upload():
     remove_s3_folder(s3boto_parent, root_path)
 
 
+def test_s3boto_upload_download():
+    s3boto, root_path, s3boto_parent = get_s3_obj()
+    root_path_local = generate_folder_path()
+    assert isdir(root_path_local)
+    Path(root_path_local / "level0.txt").touch()
+    Path(root_path_local / "level1.txt").touch()
+    Path(root_path_local / "level2.txt").touch()
+    s3boto.upload(root_path_local / "level0.txt", "uploaded_level0.txt")
+    s3boto.mkdir("level1")
+    s3boto.upload(root_path_local / "level1.txt", "/level1/uploaded_level1.txt")
+    s3boto.mkdir("/level1/level2/")
+    s3boto.upload(root_path_local / "level2.txt", "/level1/level2/uploaded_level2.txt")
+    print(root_path_local)
+    s3boto.download("uploaded_level0.txt", root_path_local / "downloaded_level0.txt")
+    s3boto.download("/level1/uploaded_level1.txt", \
+        root_path_local / "downloaded_level1.txt")
+    s3boto.cd("level1")
+    s3boto.download("level2/uploaded_level2.txt", \
+        root_path_local / "downloaded_level2.txt")
+    assert isfile(root_path_local / "downloaded_level0.txt")
+    assert isfile(root_path_local / "downloaded_level1.txt")
+    assert isfile(root_path_local / "downloaded_level2.txt")
+    remove_folder(root_path_local)
+    remove_s3_folder(s3boto_parent, root_path)
+
+
 '''
-def test_s3boto_download():
-
-    root_path = generate_folder_path()
-    assert isdir(root_path)
-    s = StorageDisk(root_path=root_path)
-    assert s.initialized()
-
-    makedirs(root_path / "level1/level2")
-    Path(root_path / "level1/level2/level2.txt").touch()
-    Path(root_path / "level1/level1.txt").touch()
-    Path(root_path / "level0.txt").touch()
-    makedirs(root_path / "downloaded")
-
-    s.download("level0.txt", root_path / "downloaded/downloaded_level0.txt")
-    s.download("/level1/level1.txt", \
-        root_path / "downloaded/downloaded_level1.txt")
-    s.cd("level1")
-    s.download("level2/level2.txt", \
-        root_path / "downloaded/downloaded_level2.txt")
-
-    assert isfile(root_path / "downloaded/downloaded_level0.txt")
-    assert isfile(root_path / "downloaded/downloaded_level1.txt")
-    assert isfile(root_path / "downloaded/downloaded_level2.txt")
-    assert getsize(root_path / "downloaded/downloaded_level0.txt") \
-        == getsize(root_path / "level0.txt")
-    assert getsize(root_path / "downloaded/downloaded_level1.txt") \
-        == getsize(root_path / "level1/level1.txt")
-    assert getsize(root_path / "downloaded/downloaded_level2.txt") \
-        == getsize(root_path / "level1/level2/level2.txt")
-
-    s.cd("/level1")
-    s.download("level2", "/downloaded/downloaded_level2")
-    assert not isdir(root_path / "downloaded/downloaded_level2")
-    assert not isfile(root_path / "downloaded/downloaded_level2")
-
-    remove_folder(root_path)
-
-
 def test_s3boto_size_rm():
 
     root_path = generate_folder_path()
