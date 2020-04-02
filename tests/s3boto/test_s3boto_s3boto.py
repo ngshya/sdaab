@@ -5,7 +5,6 @@ from pathlib import Path
 from datetime import datetime
 from numpy.random import randint
 from pytest import raises
-from sdaab.disk.storage_disk import StorageDisk
 from sdaab.s3boto.storage_s3_boto import StorageS3boto
 from sdaab.utils.get_config import dict_config
 
@@ -139,45 +138,32 @@ def test_s3boto_cd_ls_exists():
     remove_s3_folder(s3boto_parent, root_path)
 
 
+def test_s3boto_upload():
+    s3boto, root_path, s3boto_parent = get_s3_obj()
+    root_path_local = generate_folder_path()
+    assert isdir(root_path_local)
+    makedirs(root_path_local / "level1/level2")
+    Path(root_path_local / "level1/level2/level2.txt").touch()
+    Path(root_path_local / "level1/level1.txt").touch()
+    Path(root_path_local / "level0.txt").touch()
+    makedirs(root_path_local / "uploaded")
+    s3boto.mkdir("uploaded")
+    s3boto.upload(root_path_local / "level0.txt", "/uploaded/uploaded_level0.txt")
+    s3boto.upload(root_path_local / "level1/level1.txt", "uploaded/uploaded_level1.txt")
+    s3boto.cd("uploaded")
+    assert s3boto.pwd() == "/uploaded"
+    s3boto.upload(root_path_local / "level1/level2/level2.txt", "uploaded_level2.txt")
+    assert sorted(s3boto.ls()) \
+        == ["uploaded_level0.txt", "uploaded_level1.txt", "uploaded_level2.txt"]
+    s3boto.cd("..")
+    assert sorted(s3boto.ls("uploaded")) \
+        == ["uploaded_level0.txt", "uploaded_level1.txt", "uploaded_level2.txt"]
+    remove_folder(root_path_local)
+    remove_s3_folder(s3boto_parent, root_path)
+
+
 '''
-def test_storage_disk_upload():
-
-    root_path = generate_folder_path()
-    assert isdir(root_path)
-    s = StorageDisk(root_path=root_path)
-    assert s.initialized()
-
-    makedirs(root_path / "level1/level2")
-    Path(root_path / "level1/level2/level2.txt").touch()
-    Path(root_path / "level1/level1.txt").touch()
-    Path(root_path / "level0.txt").touch()
-    makedirs(root_path / "uploaded")
-
-    s.upload(root_path / "level0.txt", "/uploaded/uploaded_level0.txt")
-    s.upload(root_path / "level1/level1.txt", "/uploaded/uploaded_level1.txt")
-    s.cd("uploaded")
-    assert s.pwd() == "/uploaded"
-    s.upload(root_path / "level1/level2/level2.txt", "uploaded_level2.txt")
-
-    assert isfile(root_path / "uploaded/uploaded_level0.txt")
-    assert isfile(root_path / "uploaded/uploaded_level1.txt")
-    assert isfile(root_path / "uploaded/uploaded_level2.txt")
-    assert getsize(root_path / "uploaded/uploaded_level0.txt") \
-        == getsize(root_path / "level0.txt")
-    assert getsize(root_path / "uploaded/uploaded_level1.txt") \
-        == getsize(root_path / "level1/level1.txt")
-    assert getsize(root_path / "uploaded/uploaded_level2.txt") \
-        == getsize(root_path / "level1/level2/level2.txt")
-
-    s.cd("/level1")
-    s.upload("level2", "/uploaded/uploaded_level2")
-    assert not isdir(root_path / "uploaded/uploaded_level2")
-    assert not isfile(root_path / "uploaded/uploaded_level2")
-
-    remove_folder(root_path)
-
-
-def test_storage_disk_download():
+def test_s3boto_download():
 
     root_path = generate_folder_path()
     assert isdir(root_path)
@@ -215,7 +201,7 @@ def test_storage_disk_download():
     remove_folder(root_path)
 
 
-def test_storage_disk_size_rm():
+def test_s3boto_size_rm():
 
     root_path = generate_folder_path()
     assert isdir(root_path)
@@ -247,7 +233,7 @@ def test_storage_disk_size_rm():
     remove_folder(root_path)
 
 
-def test_storage_disk_upload_download_memory():
+def test_s3boto_upload_download_memory():
 
     root_path = generate_folder_path()
     assert isdir(root_path)
@@ -288,7 +274,7 @@ def test_storage_disk_upload_download_memory():
     remove_folder(root_path)
 
 
-def test_storage_disk_rename():
+def test_s3boto_rename():
 
     root_path = generate_folder_path()
     assert isdir(root_path)
@@ -313,7 +299,7 @@ def test_storage_disk_rename():
     remove_folder(root_path)
 
 
-def test_storage_disk_mv():
+def test_s3boto_mv():
 
     root_path = generate_folder_path()
     assert isdir(root_path)
@@ -360,7 +346,7 @@ def test_storage_disk_mv():
     remove_folder(root_path)
 
 
-def test_storage_disk_cp():
+def test_s3boto_cp():
 
     root_path = generate_folder_path()
     assert isdir(root_path)
@@ -417,7 +403,7 @@ def test_storage_disk_cp():
     remove_folder(root_path)
 
 
-def test_storage_disk_append():
+def test_s3boto_append():
 
     root_path = generate_folder_path()
     assert isdir(root_path)
@@ -441,7 +427,7 @@ def test_storage_disk_append():
     remove_folder(root_path)
 
 
-def test_storage_disk_tmp():
+def test_s3boto_tmp():
 
     root_path = generate_folder_path()
     assert isdir(root_path)

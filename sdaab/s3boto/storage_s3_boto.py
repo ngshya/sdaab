@@ -244,9 +244,10 @@ class StorageS3boto(Storage):
             path_source = str(path_source)
             path_dest = str(path_dest)
             path_dest = safe_file_path_str(path_dest)
-            path_full = self.__path_expand(path_dest)
-            self.__check_path_full(path_full)
-            path_full_4_s3 = self.__full_path_4_s3(path_full)
+            path_full = self.__path_expand(path_dest, bool_file=True)
+            path_full_4_s3 = self.__rm_lead_slash(path_full)
+            assert self.__exists_parent(path_full_4_s3), \
+                "Parent folder not found."
             assert isfile(path_source), "Source file not found."
             assert not self.__exists(path_full_4_s3), \
                 "Destination file already exists."
