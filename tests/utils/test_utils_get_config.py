@@ -14,7 +14,7 @@ def test_utils_get_config():
     assert config["ENV"] == "DEVELOPMENT"
     assert config["PING"] == "PONG"
 
-    config = get_config(path_env_yaml="config/testing.yml")
+    config = get_config(path_env_yaml="sdaab/config/testing.yml")
     assert config["ENV"] == "TESTING"
     assert config["PING"] == "PONG"
 
