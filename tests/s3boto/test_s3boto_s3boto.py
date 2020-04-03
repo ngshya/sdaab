@@ -169,6 +169,8 @@ def test_s3boto_upload_download():
     Path(root_path_local / "level0.txt").touch()
     Path(root_path_local / "level1.txt").touch()
     Path(root_path_local / "level2.txt").touch()
+    with open(root_path_local / "level0.txt", "w") as f:
+        f.write('hello')
     s3boto.upload(root_path_local / "level0.txt", "uploaded_level0.txt")
     s3boto.mkdir("level1")
     s3boto.upload(root_path_local / "level1.txt", "/level1/uploaded_level1.txt")
@@ -184,6 +186,8 @@ def test_s3boto_upload_download():
     assert isfile(root_path_local / "downloaded_level0.txt")
     assert isfile(root_path_local / "downloaded_level1.txt")
     assert isfile(root_path_local / "downloaded_level2.txt")
+    with open(root_path_local / "downloaded_level0.txt", "r") as f:
+        assert f.read() == "hello"
     remove_folder(root_path_local)
     remove_s3_folder(s3boto_parent, root_path)
 

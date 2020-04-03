@@ -157,3 +157,6 @@ profiler.png
 
 # Env variables
 /bin/run_secret_variables
+
+#tmp
+/tmp

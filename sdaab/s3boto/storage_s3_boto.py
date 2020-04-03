@@ -5,10 +5,12 @@ from pathlib import Path
 #from os.path import isdir, isfile, getsize, join, islink
 #from shutil import copyfile, move, copytree, rmtree
 from os.path import isdir, isfile
+from os import stat
 from re import sub
 from boto.s3.connection import S3Connection
 from boto.s3.key import Key
 from io import BytesIO
+from filechunkio import FileChunkIO
 from numpy import unique
 from math import ceil
 from .logger import logger
@@ -254,9 +256,27 @@ class StorageS3boto(Storage):
                 "Destination file already exists."
             assert not self.__exists(path_full_4_s3 + "/"), \
                 "Destination folder already exists."
-            k = self.__connection_bucket.new_key(path_full_4_s3)
-            with open(path_source, "rb") as fp:
-                k.set_contents_from_file(fp)
+            source_size = stat(path_source).st_size
+            if source_size == 0:
+                k = self.__connection_bucket.new_key(path_full_4_s3)
+                with open(path_source, "rb") as fp:
+                    k.set_contents_from_file(fp)
+            else:
+                chunk_size = 5242880
+                mp = self.__connection_bucket\
+                    .initiate_multipart_upload(path_full_4_s3)
+                chunk_count = int(ceil(source_size / float(chunk_size)))
+                for i in range(chunk_count):
+                    offset = chunk_size * i
+                    int_bytes = min(chunk_size, source_size - offset)
+                    with FileChunkIO(
+                        path_source, 
+                        'r', 
+                        offset=offset, 
+                        bytes=int_bytes
+                    ) as fp:
+                        mp.upload_part_from_file(fp, part_num=i + 1)
+                mp.complete_upload()
             assert self.__exists(path_full_4_s3), \
                 "Destination file check failed."
             logger.debug("upload " + str(path_dest) + ": True")
