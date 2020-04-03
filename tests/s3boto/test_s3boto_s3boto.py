@@ -116,7 +116,12 @@ def test_s3boto_mkdir_cd_pwd():
     assert s3boto.pwd() == "/level1/level2"
     s3boto.cd("../..")
     assert s3boto.pwd() == "/"
-    s3boto.cd("../..")
+    try:
+        s3boto.cd("../..")
+    except Exception as e:
+        print(e)
+        r = True
+    assert r
     assert s3boto.pwd() == "/"
     remove_s3_folder(s3boto_parent, root_path)
 

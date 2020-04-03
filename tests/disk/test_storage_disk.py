@@ -28,15 +28,23 @@ def test_storage_disk_init():
 
     root_path = generate_folder_path()
 
-    s = StorageDisk(root_path="/this/folder/does/not/exist")
-    assert not s.initialized()
+    try:
+        s = StorageDisk(root_path="/this/folder/does/not/exist")
+    except Exception as e:
+        print(e)
+        r = True
+    assert r
 
     s = StorageDisk(root_path=root_path)
     assert s.initialized()
     assert s.get_type() == "DISK"
     
-    s = StorageDisk(root_path="this/folder/does/not/exist")
-    assert not s.initialized()
+    try:
+        s = StorageDisk(root_path="this/folder/does/not/exist")
+    except Exception as e:
+        print(e)
+        r = True
+    assert r
 
     remove_folder(root_path)
 
@@ -59,7 +67,10 @@ def test_storage_disk_mkdir():
     assert sorted(tmp_folders) == ["tmp1", "tmp2"]
     
     tmp_mtime = getmtime(root_path / "tmp2")
-    s.mkdir("tmp2")
+    try:
+        s.mkdir("tmp2")
+    except Exception as e:
+        print(e)
     assert tmp_mtime == getmtime(root_path / "tmp2")
 
     s.mkdir("tmp/tmp3")
@@ -78,8 +89,12 @@ def test_storage_disk_get_type():
 
     assert s.get_type() == "DISK"
 
-    s = StorageDisk(root_path="this/folder/does/not/exist")
-    assert s.get_type() is None
+    try:
+        s = StorageDisk(root_path="this/folder/does/not/exist")
+    except Exception as e:
+        print(e)
+        r = True
+    assert r
 
     remove_folder(root_path)
 
@@ -107,7 +122,10 @@ def test_storage_disk_mkdir_cd_pwd():
     assert s.pwd() == "/level1/level2"
     s.cd("../..")
     assert s.pwd() == "/"
-    s.cd("../..")
+    try:
+        s.cd("../..")
+    except Exception as e:
+        print(e)
     assert s.pwd() == "/"
     s.mkdir("tmp")
     isdir(root_path / "tmp")
@@ -135,7 +153,12 @@ def test_storage_disk_cd_ls_exists():
     makedirs(root_path / "level1/level2/level3")
     assert s.exists("/level1/level2/level3")
     assert s.ls("/level1/level2/level3") == []
-    assert s.ls("/folder/that/does/not/exist") is None
+    try: 
+        s.ls("/folder/that/does/not/exist")
+    except Exception as e:
+        print(e)
+        r = None
+    assert r is None
     s.cd("/level1/level2/level3")
     assert not s.exists("level4.txt")
     assert not s.exists("level4")
@@ -174,7 +197,10 @@ def test_storage_disk_upload():
         == getsize(root_path / "level1/level2/level2.txt")
 
     s.cd("/level1")
-    s.upload("level2", "/uploaded/uploaded_level2")
+    try:
+        s.upload("level2", "/uploaded/uploaded_level2")
+    except Exception as e:
+        print(e)
     assert not isdir(root_path / "uploaded/uploaded_level2")
     assert not isfile(root_path / "uploaded/uploaded_level2")
 
@@ -212,7 +238,10 @@ def test_storage_disk_download():
         == getsize(root_path / "level1/level2/level2.txt")
 
     s.cd("/level1")
-    s.download("level2", "/downloaded/downloaded_level2")
+    try:
+        s.download("level2", "/downloaded/downloaded_level2")
+    except Exception as e:
+        print(e)
     assert not isdir(root_path / "downloaded/downloaded_level2")
     assert not isfile(root_path / "downloaded/downloaded_level2")
 
@@ -277,9 +306,15 @@ def test_storage_disk_upload_download_memory():
     v5 = s.download_to_memory("level1/v5")
     v6 = s.download_to_memory("/level1/v6")
 
-    s.upload_from_memory(my_variable, "/level1/level2/v10")
+    try:
+        s.upload_from_memory(my_variable, "/level1/level2/v10")
+    except Exception as e:
+        print(e)
     assert not isfile(root_path / "level1/level2/v10")
-    v10 = s.download_to_memory("level1/level2/v10")
+    try:
+        v10 = s.download_to_memory("level1/level2/v10")
+    except Exception as e:
+        v10 = None
 
     assert my_variable == v1
     assert v1 == v2
@@ -302,7 +337,10 @@ def test_storage_disk_rename():
     makedirs(root_path / "level1")
     Path(root_path / "name0").touch()
     Path(root_path / "level1/name1").touch()
-    s.rename("name0", "level1/name0")
+    try:
+        s.rename("name0", "level1/name0")
+    except Exception as e:
+        print(e)
     assert isfile(root_path / "name0")
     s.rename("name0", "new_name0")
     assert isfile(root_path / "new_name0")
@@ -337,7 +375,10 @@ def test_storage_disk_mv():
     s.mv("folder2/file0", "/file0")
     assert isfile(root_path / "file0")
 
-    s.mv("file0", "folder1/file0")
+    try:
+        s.mv("file0", "folder1/file0")
+    except Exception as e:
+        print(e)
     assert isfile(root_path/ "file0")
     assert getsize(root_path / "folder1/file0") != getsize(root_path / "file0")
 
@@ -385,7 +426,10 @@ def test_storage_disk_cp():
     assert getsize(root_path / "folder2/file0") == getsize(root_path / "file0")
     remove(root_path / "folder2/file0")
 
-    s.cp("file0", "folder1/file0")
+    try:
+        s.cp("file0", "folder1/file0")
+    except Exception as e:
+        print(e)
     assert isfile(root_path/ "file0")
     assert getsize(root_path / "folder1/file0") != getsize(root_path / "file0")
 
@@ -404,7 +448,10 @@ def test_storage_disk_cp():
     assert isfile(root_path / "folder2/file0000")
     remove(root_path / "folder2/file0000")
 
-    s.cp("file0", "/folder1/file0")
+    try:
+        s.cp("file0", "/folder1/file0")
+    except Exception as e:
+        print(e)
     assert getsize(root_path / "file0") != \
         getsize(root_path / "folder1/file0")
     remove(root_path / "folder1/file0")
@@ -439,7 +486,10 @@ def test_storage_disk_append():
     with open(root_path / "folder/file.txt", "r") as f:
         assert f.read() == "ciaociaociao"
     
-    s.append("/folder/file_not_found", "ciao")
+    try:
+        s.append("/folder/file_not_found", "ciao")
+    except Exception as e:
+        print(e)
     assert not isfile(root_path / "folder/file_not_found")
 
     remove_folder(root_path)
