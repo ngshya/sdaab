@@ -59,6 +59,7 @@ class StorageDisk(Storage):
         except Exception as e:
             self.__initialized = False
             logger.error("Initialization failed. " + str(e))
+            raise ValueError("init failed!")
 
 
     def initialized(self):
@@ -89,6 +90,7 @@ class StorageDisk(Storage):
             return self.__storage_type
         except Exception as e:
             logger.error("Failed to get the storage type. " + str(e))
+            raise ValueError("get_type failed!")
 
 
     def cd(self, path):
@@ -106,6 +108,7 @@ class StorageDisk(Storage):
             logger.debug("cd " + str(path) + ": True")
         except Exception as e:
             logger.error("cd failed. " + str(e))
+            raise ValueError('cd failed!')
     
 
     def pwd(self):
@@ -116,6 +119,7 @@ class StorageDisk(Storage):
             return str(self.__cd)
         except Exception as e:
             logger.error("pwd failed. " + str(e))
+            raise ValueError('pwd failed!')
 
 
     def ls(self, path=""):
@@ -130,6 +134,7 @@ class StorageDisk(Storage):
             return output
         except Exception as e:
             logger.error("Failed to list objects inside the folder. " + str(e))
+            raise ValueError('ls failed!')
 
 
     def exists(self, path):
@@ -143,6 +148,7 @@ class StorageDisk(Storage):
             return output
         except Exception as e:
             logger.error("Failed to check the existence. " + str(e))
+            raise ValueError('exists failed!')
 
 
     def mkdir(self, path):
@@ -159,6 +165,7 @@ class StorageDisk(Storage):
             logger.debug("mkdir " + str(path) + ": True")
         except Exception as e:
             logger.error("Failed to create the directory. " + str(e))  
+            raise ValueError('mkdir failed!')
 
 
     def upload(self, path_source, path_dest):
@@ -178,6 +185,7 @@ class StorageDisk(Storage):
             logger.debug("upload " + str(path_dest) + ": True")
         except Exception as e:
             logger.error("Failed to upload. " + str(e))  
+            raise ValueError('upload failed!')
 
 
     def download(self, path_source, path_dest):
@@ -197,6 +205,7 @@ class StorageDisk(Storage):
             logger.debug("download " + str(path_source) + ": True")
         except Exception as e:
             logger.error("Failed to download. " + str(e)) 
+            raise ValueError('download failed!')
 
 
     def rm(self, path):
@@ -217,6 +226,7 @@ class StorageDisk(Storage):
             logger.debug("rm " + str(path) + ": True")
         except Exception as e:
             logger.error("Failed to remove the file/folder. " + str(e)) 
+            raise ValueError('rm failed!')
 
 
     def size(self, path):
@@ -236,6 +246,7 @@ class StorageDisk(Storage):
             return output
         except Exception as e:
             logger.error("Failed to get the size. " + str(e))
+            raise ValueError('size failed!')
 
 
     def upload_from_memory(self, variable, path):
@@ -253,6 +264,7 @@ class StorageDisk(Storage):
             logger.debug("upload_from_memory " + str(path) + ": True")
         except Exception as e:
             logger.error("Failed to upload. " + str(e))  
+            raise ValueError('upload_from_memory failed!')
 
 
     def download_to_memory(self, path):
@@ -267,6 +279,7 @@ class StorageDisk(Storage):
             return pickle.load(file=open(path_full, "rb"))
         except Exception as e:
             logger.error("Failed to download. " + str(e))  
+            raise ValueError('download_to_memory failed!')
 
 
     def rename(self, path_source, path_dest):
@@ -294,6 +307,7 @@ class StorageDisk(Storage):
                 " --> " + str(path_dest))
         except Exception as e:
             logger.error("Failed to rename. " + str(e)) 
+            raise ValueError('rename failed!')
 
 
     def mv(self, path_source, path_dest):
@@ -319,6 +333,7 @@ class StorageDisk(Storage):
                 " --> " + str(path_dest))
         except Exception as e:
             logger.error("Failed to move. " + str(e)) 
+            raise ValueError('mv failed!')
 
 
     def cp(self, path_source, path_dest):
@@ -347,6 +362,7 @@ class StorageDisk(Storage):
                 " --> " + str(path_dest))
         except Exception as e:
             logger.error("Failed to copy. " + str(e)) 
+            raise ValueError('cp failed!')
 
 
     def append(self, path, content):
@@ -362,3 +378,4 @@ class StorageDisk(Storage):
             logger.debug("append " + str(path) + ": " + str(content))
         except Exception as e:
             logger.error("Failed to append. " + str(e)) 
+            raise ValueError('append failed!')
