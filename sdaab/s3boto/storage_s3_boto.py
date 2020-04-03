@@ -321,7 +321,7 @@ class StorageS3boto(Storage):
                     .list(prefix=path_full_4_s3 + "/")
                 output = sum([x.size for x in iterable])
             else:
-                error( "File/folder not found.")
+                raise ValueError( "File/folder not found.")
             logger.debug("size " + str(path) + ": " + str(output))
             return output
         except Exception as e:
