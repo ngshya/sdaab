@@ -10,6 +10,7 @@ from boto.s3.connection import S3Connection
 from boto.s3.key import Key
 from io import BytesIO
 from numpy import unique
+from math import ceil
 from .logger import logger
 from ..storage.storage import Storage
 
@@ -325,10 +326,10 @@ class StorageS3boto(Storage):
             logger.debug("size " + str(path) + ": " + str(output))
             return output
         except Exception as e:
-            logger.error("Failed to get the size. " + str(e))
+            logger.error("Failed to get the size. " + str(e)) 
 
 
-    def upload_from_memory(self, variable, path):
+    def upload_from_memory(self, variable, path, bool_bin=False):
         try:
             assert self.__initialized, "Storage not initialized."
             path = str(path)
@@ -337,16 +338,27 @@ class StorageS3boto(Storage):
             path_full_4_s3 = self.__rm_lead_slash(path_full)
             assert not self.__exists(path_full_4_s3), "File already exists."
             assert not self.__exists(path_full_4_s3 + "/"), "Folder already exists."
-            content = pickle.dumps(variable)
-            k = self.__connection_bucket.new_key(path_full_4_s3)
-            k.set_contents_from_string(content)
+            if bool_bin:
+                content=variable
+            else:
+                content = pickle.dumps(variable)
+            mp = self.__connection_bucket.initiate_multipart_upload(path_full_4_s3)
+            chunk_size = 5242880
+            source_size = len(content)
+            chunk_count = int(ceil(source_size / float(chunk_size)))
+            for i in range(chunk_count):
+                offset = chunk_size * i
+                int_bytes = min(chunk_size, source_size - offset)
+                fp = BytesIO(content[offset:offset+int_bytes])
+                mp.upload_part_from_file(fp, part_num=i+1)
+            mp.complete_upload()
             assert self.__exists(path_full_4_s3), "File check failed."
             logger.debug("upload_from_memory " + str(path) + ": True")
         except Exception as e:
             logger.error("Failed to upload. " + str(e))  
 
 
-    def download_to_memory(self, path):
+    def download_to_memory(self, path, bool_bin=False):
         try:
             assert self.__initialized, "Storage not initialized."
             path = str(path)
@@ -358,7 +370,10 @@ class StorageS3boto(Storage):
                 k = self.__connection_bucket.get_key(path_full_4_s3)
                 k.get_file(b)
                 b.seek(0)
-                output = pickle.loads(b.read())
+                if bool_bin:
+                    output = b.read()
+                else:
+                    output = pickle.loads(b.read())
             logger.debug("download_to_memory " + str(path) + ": True")
             return output
         except Exception as e:
