@@ -4,12 +4,12 @@ from pathlib import Path
 from os.path import isdir, isfile
 from os import stat
 from re import sub
-from boto.s3.connection import S3Connection
-from boto.s3.key import Key
 from io import BytesIO
 from filechunkio import FileChunkIO
 from numpy import unique
 from math import ceil
+from requests import post
+from json import loads as jloads
 from .logger import logger
 from ..storage.storage import Storage
 
@@ -33,22 +33,17 @@ def safe_file_path_str(path):
     return path
 
 
-class StorageS3boto(Storage):
+class StorageS3BDL(Storage):
 
 
     def __init__(
         self, 
-        host,
-        port,
-        access_key,
-        secret_key, 
-        bucket,
-        calling_format,
-        secure,
-        root_path="/",
+        url,
+        secret_key,
+        root_path="/"
     ):
         try:
-            self.__storage_type = "S3boto"
+            self.__storage_type = "S3BDL"
             root_path = str(root_path)
             assert len(root_path) > 0, "No root path provided."
             assert root_path[0] == "/", "Root path should start with /."
@@ -58,40 +53,13 @@ class StorageS3boto(Storage):
             self.__root_path_full = root_path
             self.__cd_full = root_path
             self.__cd = "/"
-            self.__host = str(host)
-            self.__port = int(port)
-            self.__access_key = str(access_key)
+            self.__url = str(url)
+            if self.__url[-1] != "/":
+                self.__url  = self.__url[-1] + "/"
             self.__secret_key = str(secret_key)
-            self.__bucket = str(bucket)
-            self.__calling_format = str(calling_format)
-            if type(secure) == bool:
-                self.__secure = secure 
-            else:
-                self.__secure = secure == "True" 
-
-            self.__connection = S3Connection(
-                host=self.__host,
-                port=self.__port,
-                aws_access_key_id=self.__access_key,
-                aws_secret_access_key=self.__secret_key,
-                calling_format=self.__calling_format,
-                is_secure=self.__secure
-            )
-
-            assert self.__connection.lookup(self.__bucket) is not None, \
-                "The bucket specified doesn't exists!"
-            
-            self.__connection_bucket = self.__connection\
-                .get_bucket(self.__bucket)
-
-            if len(self.__root_path_full) > 0: 
-                k = Key(self.__connection_bucket)
-                k.key = self.__rm_lead_slash(self.__root_path_full)
-                assert k.exists(), "Root folder not found!"
-
+            assert post(self.__url).text == '200'
             self.__initialized = True
-            logger.debug("Storage DISK initialized.")
-
+            logger.debug("Storage S3BDL initialized.")
         except Exception as e:
             self.__initialized = False
             logger.error("Initialization failed. " + str(e))
@@ -128,21 +96,23 @@ class StorageS3boto(Storage):
     
 
     def __exists(self, key):
-        k = Key(self.__connection_bucket)
-        k.key = key
-        return k.exists()
+        return post(
+            url=self.__url+"exists/",
+            data={
+                "secret_key": self.__secret_key,
+                "key": key
+            }
+        ).text == 'True'
 
     
     def __exists_parent(self, key):
-        if (key == "/") or (key == ""):
-            return True
         key_parent = str(Path("/" + key).parent)
         if key_parent[-1] != "/":
             key_parent = key_parent + "/"
-        key_parent = key_parent[1:]
-        k = Key(self.__connection_bucket)
-        k.key = key_parent
-        return self.__exists(key_parent)
+        if key_parent == "/":
+            return True
+        else:
+            return self.__exists(key_parent)
 
 
     def get_type(self):
@@ -188,16 +158,14 @@ class StorageS3boto(Storage):
             path = str(path)
             path_full = self.__path_expand(path, bool_file=False)
             path_full_4_s3 = self.__rm_lead_slash(path_full) 
-            if len(path_full_4_s3) > 0:
-                assert self.__exists(path_full_4_s3), "Folder not found."
-                iterable = self.__connection_bucket.list(prefix=path_full_4_s3)
-                output = [x.name for x in iterable]
-                output = [x.name for x in iterable if x.name != path_full_4_s3]
-                output = [sub("^"+path_full_4_s3+"|/.*$", "", x) for x in output]
-            else:
-                iterable = self.__connection_bucket.list()
-                output = [x.name for x in iterable]
-                output = [sub("/.*$", "", x) for x in output]
+            post_data = {
+                "key": path_full_4_s3, 
+                "secret_key": self.__secret_key
+            }
+            output = jloads(post(
+                url=self.__url+"ls/", 
+                data=post_data
+            ).text)["ls"]
             logger.debug("ls " + str(path) + ": " + " ".join(output))
             return unique(output)
         except Exception as e:
@@ -211,13 +179,7 @@ class StorageS3boto(Storage):
             path = str(path)
             path_full = self.__path_expand(path, bool_file=True)
             path_full = self.__rm_lead_slash(path_full)
-            k = Key(self.__connection_bucket)
-            k.key = path_full
-            if k.exists():
-                output = True
-            else:
-                k.key = path_full + "/"
-                output = k.exists()
+            output = self.__exists(key=path_full)
             logger.debug("exists " + str(path) + ": " + str(output))
             return output
         except Exception as e:
@@ -236,8 +198,15 @@ class StorageS3boto(Storage):
                 "Directory already exists."
             assert self.__exists_parent(path_full_4_s3), \
                 "Parent folder not found"
-            k = self.__connection_bucket.new_key(path_full_4_s3)
-            k.set_contents_from_string('')
+            post_data = {
+                "key": path_full_4_s3, 
+                "secret_key": self.__secret_key
+            }
+            output = post(
+                url=self.__url+"mkdir/", 
+                data=post_data
+            ).text
+            assert output == "OK!", "Post call failed."
             assert self.__exists(path_full_4_s3), "Directory check failed."
             logger.debug("mkdir " + str(path) + ": True")
         except Exception as e:
@@ -260,27 +229,17 @@ class StorageS3boto(Storage):
                 "Destination file already exists."
             assert not self.__exists(path_full_4_s3 + "/"), \
                 "Destination folder already exists."
-            source_size = stat(path_source).st_size
-            if source_size == 0:
-                k = self.__connection_bucket.new_key(path_full_4_s3)
-                with open(path_source, "rb") as fp:
-                    k.set_contents_from_file(fp)
-            else:
-                chunk_size = 5242880
-                mp = self.__connection_bucket\
-                    .initiate_multipart_upload(path_full_4_s3)
-                chunk_count = int(ceil(source_size / float(chunk_size)))
-                for i in range(chunk_count):
-                    offset = chunk_size * i
-                    int_bytes = min(chunk_size, source_size - offset)
-                    with FileChunkIO(
-                        path_source, 
-                        'r', 
-                        offset=offset, 
-                        bytes=int_bytes
-                    ) as fp:
-                        mp.upload_part_from_file(fp, part_num=i + 1)
-                mp.complete_upload()
+            post_data = {
+                "key": path_full_4_s3, 
+                "secret_key": self.__secret_key,
+            }
+            post_files = {'file': open(path_source,'rb')}
+            output = post(
+                url=self.__url+"upload/", 
+                data=post_data,
+                files=post_files
+            ).text
+            assert output == "OK!", "Post call failed."
             assert self.__exists(path_full_4_s3), \
                 "Destination file check failed."
             logger.debug("upload " + str(path_dest) + ": True")
@@ -300,10 +259,16 @@ class StorageS3boto(Storage):
             assert self.__exists(path_full_4_s3), "Source file not found."
             assert not isfile(path_dest), "Destination file already exists."
             assert not isdir(path_dest), "Destination folder already exists."
-            with open(path_dest, "wb") as fp:
-                self.__connection_bucket\
-                    .get_key(path_full_4_s3)\
-                    .get_contents_to_file(fp)
+            post_data = {
+                "key": path_full_4_s3, 
+                "secret_key": self.__secret_key,
+            }
+            content = post(
+                url=self.__url+"download/", 
+                data=post_data,
+            ).content
+            with open(path_dest, 'wb') as s:
+                s.write(content)
             assert isfile(path_dest), "Destination file check failed."
             logger.debug("download " + str(path_source) + ": True")
         except Exception as e:
@@ -319,16 +284,15 @@ class StorageS3boto(Storage):
             path_full = self.__path_expand(path, bool_file=True)
             path_full_4_s3 = self.__rm_lead_slash(path_full)
             assert len(path_full_4_s3) > 0, "Nothing to remove."
-            if self.__exists(path_full_4_s3):
-                self.__connection_bucket.delete_key(path_full_4_s3)
-                assert not self.__exists(path_full_4_s3), \
-                    "File/folder still exists."
-            iterable = self.__connection_bucket\
-                .list(prefix=path_full_4_s3+"/")
-            output = [x.name for x in iterable]
-            for k in output:
-                self.__connection_bucket.delete_key(k)
-                assert not self.__exists(k), "File/folder still exists."
+            post_data = {
+                "key": path_full_4_s3, 
+                "secret_key": self.__secret_key
+            }
+            output = post(
+                url=self.__url+"rm/", 
+                data=post_data
+            ).text
+            assert output == "OK!", "Post call failed."
             logger.debug("rm " + str(path) + ": True")
         except Exception as e:
             logger.error("Failed to remove the file/folder. " + str(e))
@@ -342,14 +306,16 @@ class StorageS3boto(Storage):
             path = safe_file_path_str(path)
             path_full = self.__path_expand(path, bool_file=True)
             path_full_4_s3 = self.__rm_lead_slash(path_full)
-            if self.__exists(path_full_4_s3):
-                output = self.__connection_bucket.get_key(path_full_4_s3).size
-            elif self.__exists(path_full_4_s3 + "/"):
-                iterable = self.__connection_bucket\
-                    .list(prefix=path_full_4_s3 + "/")
-                output = sum([x.size for x in iterable])
-            else:
-                raise ValueError( "File/folder not found.")
+            post_data = {
+                "key": path_full_4_s3, 
+                "secret_key": self.__secret_key
+            }
+            output = post(
+                url=self.__url+"size/", 
+                data=post_data
+            ).text
+            output = int(output)
+            assert output >= 0, "Wrong output size."
             logger.debug("size " + str(path) + ": " + str(output))
             return output
         except Exception as e:
@@ -370,21 +336,17 @@ class StorageS3boto(Storage):
                 content=variable
             else:
                 content = pickle.dumps(variable)
-            if len(content) == 0:
-                k = self.__connection_bucket.new_key(path_full_4_s3)
-                with open(path_source, "rb") as fp:
-                    k.set_contents_from_file(fp)
-            else:
-                mp = self.__connection_bucket.initiate_multipart_upload(path_full_4_s3)
-                chunk_size = 5242880
-                source_size = len(content)
-                chunk_count = int(ceil(source_size / float(chunk_size)))
-                for i in range(chunk_count):
-                    offset = chunk_size * i
-                    int_bytes = min(chunk_size, source_size - offset)
-                    fp = BytesIO(content[offset:offset+int_bytes])
-                    mp.upload_part_from_file(fp, part_num=i+1)
-                mp.complete_upload()
+            post_data = {
+                "key": path_full_4_s3, 
+                "secret_key": self.__secret_key,
+            }
+            post_files = {'file': content)}
+            output = post(
+                url=self.__url+"upload/", 
+                data=post_data,
+                files=post_files
+            ).text
+            assert output == "OK!", "Post call failed."
             assert self.__exists(path_full_4_s3), "File check failed."
             logger.debug("upload_from_memory " + str(path) + ": True")
         except Exception as e:
@@ -400,14 +362,18 @@ class StorageS3boto(Storage):
             path_full = self.__path_expand(path, bool_file=True)
             path_full_4_s3 = self.__rm_lead_slash(path_full)
             assert self.__exists(path_full_4_s3), "File not found."
-            with BytesIO() as b:
-                k = self.__connection_bucket.get_key(path_full_4_s3)
-                k.get_file(b)
-                b.seek(0)
-                if bool_bin:
-                    output = b.read()
-                else:
-                    output = pickle.loads(b.read())
+            post_data = {
+                "key": path_full_4_s3, 
+                "secret_key": self.__secret_key,
+            }
+            content = post(
+                url=self.__url+"download/", 
+                data=post_data,
+            ).content
+            if bool_bin:
+                output = content.read()
+            else:
+                output = pickle.loads(content.read())
             logger.debug("download_to_memory " + str(path) + ": True")
             return output
         except Exception as e:
@@ -428,38 +394,16 @@ class StorageS3boto(Storage):
             assert Path(path_dest_full_4_s3).parent \
                 == Path(path_source_full_4_s3).parent, \
                 "Different parent directories."
-            if self.__exists(path_source_full_4_s3) \
-                and not self.__exists(path_dest_full_4_s3):
-                self.__connection_bucket.copy_key(
-                    path_dest_full_4_s3, 
-                    self.__bucket, 
-                    path_source_full_4_s3
-                )
-                self.__connection_bucket.delete_key(path_source_full_4_s3)
-            else:
-                assert self.__exists(path_source_full_4_s3+"/") \
-                    and not self.__exists(path_dest_full_4_s3+"/"), \
-                    "Source not found or destination already exists."
-                iterable = self.__connection_bucket\
-                    .list(prefix=path_source_full_4_s3+"/")
-                array_sources = [x.name for x in iterable]
-                array_dests = [sub("^"+path_source_full_4_s3, \
-                    path_dest_full_4_s3, x) \
-                    for x in array_sources]
-                for item_dest in array_dests:
-                    assert not self.__exists(item_dest), \
-                        "Destination already exists."
-                for j, item_source in enumerate(array_sources):
-                    self.__connection_bucket.copy_key(
-                        array_dests[j], 
-                        self.__bucket, 
-                        item_source
-                    )
-                    self.__connection_bucket.delete_key(item_source)
-                    assert self.__exists(array_dests[j]), \
-                        "Destination check failed."
-                    assert not self.__exists(item_source), \
-                        "Source check failed."
+            post_data = {
+                "key_old": path_source_full_4_s3, 
+                "key_new": path_dest_full_4_s3,
+                "secret_key": self.__secret_key
+            }
+            output = post(
+                url=self.__url+"rename/", 
+                data=post_data
+            ).text
+            assert output == "OK!", "Post call failed."
             logger.debug("rename " + str(path_source) + \
                 " --> " + str(path_dest))
         except Exception as e:
@@ -477,38 +421,16 @@ class StorageS3boto(Storage):
             path_dest = safe_file_path_str(path_dest)
             path_dest_full = self.__path_expand(path_dest, bool_file=True)
             path_dest_full_4_s3 = self.__rm_lead_slash(path_dest_full)
-            if self.__exists(path_source_full_4_s3) \
-                and not self.__exists(path_dest_full_4_s3):
-                self.__connection_bucket.copy_key(
-                    path_dest_full_4_s3, 
-                    self.__bucket, 
-                    path_source_full_4_s3
-                )
-                self.__connection_bucket.delete_key(path_source_full_4_s3)
-            else:
-                assert self.__exists(path_source_full_4_s3+"/") \
-                    and not self.__exists(path_dest_full_4_s3+"/"), \
-                    "Source not found or destination already exists."
-                iterable = self.__connection_bucket\
-                    .list(prefix=path_source_full_4_s3+"/")
-                array_sources = [x.name for x in iterable]
-                array_dests = [sub("^"+path_source_full_4_s3, \
-                    path_dest_full_4_s3, x) \
-                    for x in array_sources]
-                for item_dest in array_dests:
-                    assert not self.__exists(item_dest), \
-                        "Destination already exists."
-                for j, item_source in enumerate(array_sources):
-                    self.__connection_bucket.copy_key(
-                        array_dests[j], 
-                        self.__bucket, 
-                        item_source
-                    )
-                    self.__connection_bucket.delete_key(item_source)
-                    assert self.__exists(array_dests[j]), \
-                        "Destination check failed."
-                    assert not self.__exists(item_source), \
-                        "Source check failed."
+            post_data = {
+                "key_old": path_source_full_4_s3, 
+                "key_new": path_dest_full_4_s3,
+                "secret_key": self.__secret_key
+            }
+            output = post(
+                url=self.__url+"mv/", 
+                data=post_data
+            ).text
+            assert output == "OK!", "Post call failed."
             logger.debug("mv " + str(path_source) + \
                 " --> " + str(path_dest))
         except Exception as e:
@@ -526,36 +448,16 @@ class StorageS3boto(Storage):
             path_dest = safe_file_path_str(path_dest)
             path_dest_full = self.__path_expand(path_dest, bool_file=True)
             path_dest_full_4_s3 = self.__rm_lead_slash(path_dest_full)
-            if self.__exists(path_source_full_4_s3) \
-                and not self.__exists(path_dest_full_4_s3):
-                self.__connection_bucket.copy_key(
-                    path_dest_full_4_s3, 
-                    self.__bucket, 
-                    path_source_full_4_s3
-                )
-            else:
-                assert self.__exists(path_source_full_4_s3+"/") \
-                    and not self.__exists(path_dest_full_4_s3+"/"), \
-                    "Source not found or destination already exists."
-                iterable = self.__connection_bucket\
-                    .list(prefix=path_source_full_4_s3+"/")
-                array_sources = [x.name for x in iterable]
-                array_dests = [sub("^"+path_source_full_4_s3, \
-                    path_dest_full_4_s3, x) \
-                    for x in array_sources]
-                for item_dest in array_dests:
-                    assert not self.__exists(item_dest), \
-                        "Destination already exists."
-                for j, item_source in enumerate(array_sources):
-                    self.__connection_bucket.copy_key(
-                        array_dests[j], 
-                        self.__bucket, 
-                        item_source
-                    )
-                    assert self.__exists(array_dests[j]), \
-                        "Destination check failed."
-                    assert self.__exists(item_source), \
-                        "Source check failed."
+            post_data = {
+                "key_old": path_source_full_4_s3, 
+                "key_new": path_dest_full_4_s3,
+                "secret_key": self.__secret_key
+            }
+            output = post(
+                url=self.__url+"cp/", 
+                data=post_data
+            ).text
+            assert output == "OK!", "Post call failed."
             logger.debug("cp " + str(path_source) + \
                 " --> " + str(path_dest))
         except Exception as e:
@@ -564,6 +466,9 @@ class StorageS3boto(Storage):
 
 
     def append(self, path, content):
+        # TODO: implement it!
+        raise ValueError("append method not implemented yet!")
+        '''
         try:
             logger.warning("Not the most efficient implementation, improve it!")
             assert self.__initialized, "Storage not initialized."
@@ -573,16 +478,9 @@ class StorageS3boto(Storage):
             path = safe_file_path_str(path)
             path_full = self.__path_expand(path, bool_file=True)
             path_full = self.__rm_lead_slash(path_full)
-            k = Key(self.__connection_bucket)
-            k.key = path_full
-            assert k.exists(), "File not found."
-            content_old = self.download_to_memory(path=path)
-            assert type(content_old) == str, \
-                "It is only possible to append to strings!"
-            content_new = content_old + content
-            self.rm(path)
-            self.upload_from_memory(variable=content_new, path=path)
+
             logger.debug("append " + str(path) + ": " + str(content))
         except Exception as e:
             logger.error("Failed to append. " + str(e)) 
             raise ValueError("append failed!")
+        '''
