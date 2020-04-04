@@ -372,8 +372,7 @@ class StorageS3boto(Storage):
                 content = pickle.dumps(variable)
             if len(content) == 0:
                 k = self.__connection_bucket.new_key(path_full_4_s3)
-                with open(path_source, "rb") as fp:
-                    k.set_contents_from_file(fp)
+                k.set_contents_from_string("")
             else:
                 mp = self.__connection_bucket.initiate_multipart_upload(path_full_4_s3)
                 chunk_size = 5242880
