@@ -57,7 +57,7 @@ class StorageS3BDL(Storage):
             if self.__url[-1] != "/":
                 self.__url  = self.__url[-1] + "/"
             self.__secret_key = str(secret_key)
-            assert post(self.__url).text == '200'
+            assert post(self.__url+"status/").text == '200'
             self.__initialized = True
             logger.debug("Storage S3BDL initialized.")
         except Exception as e:
@@ -106,13 +106,13 @@ class StorageS3BDL(Storage):
 
     
     def __exists_parent(self, key):
+        if (key == "/") or (key == ""):
+            return True
         key_parent = str(Path("/" + key).parent)
         if key_parent[-1] != "/":
             key_parent = key_parent + "/"
-        if key_parent == "/":
-            return True
-        else:
-            return self.__exists(key_parent)
+        key_parent = key_parent[1:]
+        return self.__exists(key_parent)
 
 
     def get_type(self):
@@ -195,7 +195,7 @@ class StorageS3BDL(Storage):
             path_full = self.__path_expand(path, bool_file=False)
             path_full_4_s3 = self.__rm_lead_slash(path_full)
             assert not self.__exists(path_full_4_s3), \
-                "Directory already exists."
+                "Directory already exists. "
             assert self.__exists_parent(path_full_4_s3), \
                 "Parent folder not found"
             post_data = {
@@ -340,7 +340,7 @@ class StorageS3BDL(Storage):
                 "key": path_full_4_s3, 
                 "secret_key": self.__secret_key,
             }
-            post_files = {'file': content)}
+            post_files = {'file': content}
             output = post(
                 url=self.__url+"upload/", 
                 data=post_data,
@@ -371,9 +371,9 @@ class StorageS3BDL(Storage):
                 data=post_data,
             ).content
             if bool_bin:
-                output = content.read()
+                output = content
             else:
-                output = pickle.loads(content.read())
+                output = pickle.loads(content)
             logger.debug("download_to_memory " + str(path) + ": True")
             return output
         except Exception as e:
