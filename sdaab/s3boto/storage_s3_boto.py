@@ -134,15 +134,15 @@ class StorageS3boto(Storage):
 
     
     def __exists_parent(self, key):
+        if (key == "/") or (key == ""):
+            return True
         key_parent = str(Path("/" + key).parent)
         if key_parent[-1] != "/":
             key_parent = key_parent + "/"
-        if key_parent == "/":
-            return True
-        else:
-            k = Key(self.__connection_bucket)
-            k.key = key_parent
-            return k.exists()
+        key_parent = key_parent[1:]
+        k = Key(self.__connection_bucket)
+        k.key = key_parent
+        return self.__exists(key_parent)
 
 
     def get_type(self):
@@ -370,16 +370,21 @@ class StorageS3boto(Storage):
                 content=variable
             else:
                 content = pickle.dumps(variable)
-            mp = self.__connection_bucket.initiate_multipart_upload(path_full_4_s3)
-            chunk_size = 5242880
-            source_size = len(content)
-            chunk_count = int(ceil(source_size / float(chunk_size)))
-            for i in range(chunk_count):
-                offset = chunk_size * i
-                int_bytes = min(chunk_size, source_size - offset)
-                fp = BytesIO(content[offset:offset+int_bytes])
-                mp.upload_part_from_file(fp, part_num=i+1)
-            mp.complete_upload()
+            if len(content) == 0:
+                k = self.__connection_bucket.new_key(path_full_4_s3)
+                with open(path_source, "rb") as fp:
+                    k.set_contents_from_file(fp)
+            else:
+                mp = self.__connection_bucket.initiate_multipart_upload(path_full_4_s3)
+                chunk_size = 5242880
+                source_size = len(content)
+                chunk_count = int(ceil(source_size / float(chunk_size)))
+                for i in range(chunk_count):
+                    offset = chunk_size * i
+                    int_bytes = min(chunk_size, source_size - offset)
+                    fp = BytesIO(content[offset:offset+int_bytes])
+                    mp.upload_part_from_file(fp, part_num=i+1)
+                mp.complete_upload()
             assert self.__exists(path_full_4_s3), "File check failed."
             logger.debug("upload_from_memory " + str(path) + ": True")
         except Exception as e:
